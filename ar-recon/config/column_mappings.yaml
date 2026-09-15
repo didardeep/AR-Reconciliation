@@ -1,0 +1,51 @@
+# Configurable column mapping.
+#   canonical_name: [list of accepted source header aliases]
+# Matching is case-insensitive and ignores spaces / underscores / punctuation,
+# so "Order Release ID", "order_release_id" and "ORDER_RELEASE_ID" all resolve
+# to order_release_id without needing to be listed explicitly. Add aliases here
+# only when the source header is genuinely different wording.
+
+sales_forward:
+  packet_id:       [packet_id, packet id, packetid]
+  shipment_value:  [shipment_value, shipment value, customer_paid_amount, taxable_amount]
+  # optional / preserved-for-audit keys used by exception + month checks:
+  order_id:        [order_id, order id, new_parent_id]
+  sku_code:        [sku_code, sku, sku_id]
+  qty:             [qty, quantity, ordered_qty]
+  transaction_date: [order_created_date, order_shipped_date, order_date, invoice_date]
+
+sales_rt:
+  packet_id:       [packet_id, packet id]
+  shipment_value:  [shipment_value, shipment value, customer_paid_amount]
+  return_type:     [return_type, return type, reverse_type]     # explicit RT/RTO indicator if present
+  sku_code:        [sku_code, sku, sku_id]
+  qty:             [qty, quantity, returned_qty]
+  transaction_date: [return_created_date, return_date, transaction_date]
+
+sales_rto:
+  packet_id:       [packet_id, packet id]
+  shipment_value:  [shipment_value, shipment value, customer_paid_amount]
+  return_type:     [return_type, return type, reverse_type]
+  sku_code:        [sku_code, sku, sku_id]
+  qty:             [qty, quantity]
+  transaction_date: [rto_initiated_date, rto_delivered_date, transaction_date]
+
+settlement_forward:
+  order_release_id:  [order_release_id, order release id]
+  customer_paid_amt: [customer_paid_amt, customer paid amount, customer_paid_amount]
+  packet_id:         [packet_id, packet_ID, packet id]          # enables Sales<->Settlement mapping when present
+  transaction_date:  [delivery_date, packing_date, settlement_date]
+
+settlement_reverse:
+  order_release_id:  [order_release_id, order release id]
+  customer_paid_amt: [customer_paid_amt, customer paid amount, customer_paid_amount]
+  packet_id:         [packet_id, packet_ID, packet id]
+  return_id:         [return_id, return_ID]
+  transaction_date:  [return_date, delivery_date]
+
+# Optional external mapping file that links packet_id <-> order_release_id
+# (used by final Sales-vs-Settlement recon). Left empty by default so the app
+# never INVENTS a relationship between the two IDs.
+sales_settlement_link:
+  packet_id:        [packet_id, packet id]
+  order_release_id: [order_release_id, order release id]
