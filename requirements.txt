@@ -1,0 +1,15 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pandas==2.2.2
+openpyxl==3.1.5
+SQLAlchemy==2.0.35
+pydantic==2.9.2
+pydantic-settings==2.5.2
+psycopg2-binary==2.9.9
+python-multipart==0.0.12
+PyYAML==6.0.2
+alembic==1.13.3
+pytest==8.3.3
+httpx==0.27.2
+pyxlsb==1.0.10
+pyarrow==17.0.0
