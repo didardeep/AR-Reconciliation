@@ -73,12 +73,13 @@ class SalesReconciliation(ReconciliationService):
     def reconcile(
         self, forward: pd.DataFrame, rt: pd.DataFrame | None = None,
         rto: pd.DataFrame | None = None,
+        withheld: set[tuple[str, str]] | None = None,
     ) -> ReconResult:
         grouped = self._group_forward(forward)
         forward_pids = set(grouped["packet_id"])
         self._flag_reverse_only(forward_pids, rt, rto)
 
-        decision = decide(grouped["packet_id"], rt, rto, self.collector)
+        decision = decide(grouped["packet_id"], rt, rto, self.collector, withheld=withheld)
         out = grouped.merge(decision.frame, on="packet_id", how="left")
         out["reverse_type"] = out["reverse_type"].fillna(ReverseType.NONE.value)
         out["reverse_value"] = pd.to_numeric(out["reverse_value"], errors="coerce").fillna(0.0)

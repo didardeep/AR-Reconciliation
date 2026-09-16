@@ -22,6 +22,7 @@ from app.reconciliation.final import FinalReconciliation
 from app.reconciliation.month_checks import check_month
 from app.reconciliation.sales import SalesReconciliation
 from app.reconciliation.settlement import SettlementReconciliation
+from app.reconciliation.sku import SkuReconciliation
 from app.validation.data_quality import DataQualitySummary, profile
 from config.settings import get_settings
 
@@ -34,6 +35,7 @@ class RunResult:
     settlement: pd.DataFrame
     final: pd.DataFrame
     exceptions: ExceptionCollector
+    sku: pd.DataFrame = field(default_factory=pd.DataFrame)
     quality: list[DataQualitySummary] = field(default_factory=list)
     summary_cards: dict = field(default_factory=dict)
     month_report: dict = field(default_factory=dict)
@@ -123,9 +125,14 @@ def _run(fwd, rt, rto, sf, sr, link, reconciliation_month, tolerance) -> RunResu
             r = check_month(df, idc, "transaction_date", year, month, name, collector)
             month_report[name] = r.__dict__
 
-    # ---- stage 1: sales ----
+    # ---- stage 1a: sku + quantity check (feeds sales + final) ----
+    sku_svc = SkuReconciliation()
+    sku_res = sku_svc.reconcile(fwd, rt, rto)
+    collector.extend(sku_res.collector)
+
+    # ---- stage 1b: sales ----
     sales_svc = SalesReconciliation()
-    sales_res = sales_svc.reconcile(fwd, rt, rto)
+    sales_res = sales_svc.reconcile(fwd, rt, rto, withheld=sku_res.withheld)
     collector.extend(sales_res.collector)
 
     # ---- stage 2: settlement ----
@@ -146,6 +153,7 @@ def _run(fwd, rt, rto, sf, sr, link, reconciliation_month, tolerance) -> RunResu
     final_res = final_svc.reconcile(
         sales_res.frame, settle_res.frame,
         link=link, settlement_packet_map=settlement_packet_map, tolerance=tolerance,
+        packet_flags=sku_res.packet_flags,
     )
     collector.extend(final_res.collector)
 
@@ -162,6 +170,7 @@ def _run(fwd, rt, rto, sf, sr, link, reconciliation_month, tolerance) -> RunResu
         "matched_records": int((final_res.frame["status"] == MatchStatus.MATCHED.value).sum()),
         "unmatched_records": int((final_res.frame["status"] == MatchStatus.EXCEPTION.value).sum()),
         "exception_records": collector.total_non_info(),
+        "sku_exception_records": len(sku_res.packet_flags),
     }
     cards["difference"] = round(cards["net_sales"] - cards["net_settlement"], 2)
 
@@ -170,5 +179,6 @@ def _run(fwd, rt, rto, sf, sr, link, reconciliation_month, tolerance) -> RunResu
 
     return RunResult(
         sales=sales_res.frame, settlement=settle_res.frame, final=final_res.frame,
-        exceptions=collector, quality=quality, summary_cards=cards, month_report=month_report,
+        exceptions=collector, sku=sku_res.frame, quality=quality,
+        summary_cards=cards, month_report=month_report,
     )

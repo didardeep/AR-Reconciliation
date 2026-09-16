@@ -55,6 +55,7 @@ class ReconciliationRun(Base):
     sales_results = relationship("SalesReconResult", back_populates="run")
     settlement_results = relationship("SettlementReconResult", back_populates="run")
     final_results = relationship("FinalReconResult", back_populates="run")
+    sku_results = relationship("SkuReconResult", back_populates="run")
     exceptions = relationship("ExceptionRow", back_populates="run")
 
 
@@ -95,6 +96,20 @@ class FinalReconResult(Base):
     run = relationship("ReconciliationRun", back_populates="final_results")
 
 
+class SkuReconResult(Base):
+    __tablename__ = "sku_reconciliation_results"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("reconciliation_runs.id"), index=True)
+    packet_id: Mapped[str] = mapped_column(String(128), index=True)
+    sku_code: Mapped[str] = mapped_column(String(128), index=True)
+    ordered_qty: Mapped[float] = mapped_column(Float)
+    rt_qty: Mapped[float] = mapped_column(Float)
+    rto_qty: Mapped[float] = mapped_column(Float)
+    returned_qty: Mapped[float] = mapped_column(Float)
+    flag: Mapped[str | None] = mapped_column(String(64))
+    run = relationship("ReconciliationRun", back_populates="sku_results")
+
+
 class ValidationResult(Base):
     __tablename__ = "validation_results"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -122,3 +137,4 @@ class ExceptionRow(Base):
 
 Index("ix_final_run_status", FinalReconResult.run_id, FinalReconResult.status)
 Index("ix_exc_run_code", ExceptionRow.run_id, ExceptionRow.code)
+Index("ix_sku_run_packet", SkuReconResult.run_id, SkuReconResult.packet_id)

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_session
 from app.db.models import (
     ExceptionRow, FinalReconResult, ReconciliationRun,
-    SalesReconResult, SettlementReconResult, UploadedFile,
+    SalesReconResult, SettlementReconResult, SkuReconResult, UploadedFile,
 )
 from app.schemas.schemas import RunOut, RunRequest, SummaryCards
 from app.services import run_service
@@ -92,6 +92,13 @@ def _persist(session: Session, run_id: int, result: run_service.RunResult) -> No
         for r in result.final.itertuples(index=False)
     ])
     session.bulk_save_objects([
+        SkuReconResult(run_id=run_id, packet_id=str(r.packet_id), sku_code=str(r.sku_code),
+                       ordered_qty=r.ordered_qty, rt_qty=r.rt_qty, rto_qty=r.rto_qty,
+                       returned_qty=r.returned_qty,
+                       flag=None if pd.isna(r.flag) else r.flag)
+        for r in result.sku.itertuples(index=False)
+    ])
+    session.bulk_save_objects([
         ExceptionRow(run_id=run_id, **{k: (None if v == "" else v) for k, v in e.to_dict().items()})
         for e in result.exceptions.records
     ])
@@ -119,6 +126,16 @@ def get_settlement(run_id: int, session: Session = Depends(get_session),
                    limit: int = Query(500, le=5000), offset: int = 0):
     q = session.query(SettlementReconResult).filter_by(run_id=run_id).offset(offset).limit(limit)
     return [{k: v for k, v in r.__dict__.items() if k != "_sa_instance_state"} for r in q]
+
+
+@router.get("/{run_id}/sku")
+def get_sku(run_id: int, session: Session = Depends(get_session),
+           flag: str | None = None, limit: int = Query(500, le=5000), offset: int = 0):
+    q = session.query(SkuReconResult).filter_by(run_id=run_id)
+    if flag:
+        q = q.filter(SkuReconResult.flag == flag)
+    rows = q.offset(offset).limit(limit).all()
+    return [{k: v for k, v in r.__dict__.items() if k != "_sa_instance_state"} for r in rows]
 
 
 @router.get("/{run_id}/results")
@@ -171,10 +188,11 @@ def get_summary(run_id: int, session: Session = Depends(get_session)):
 
 
 @router.get("/{run_id}/export")
-def export(run_id: int, kind: str = Query("final", pattern="^(final|sales|settlement|exceptions)$"),
+def export(run_id: int, kind: str = Query("final", pattern="^(final|sales|settlement|exceptions|sku)$"),
            fmt: str = Query("csv", pattern="^(csv|excel)$"), session: Session = Depends(get_session)):
     model = {"final": FinalReconResult, "sales": SalesReconResult,
-             "settlement": SettlementReconResult, "exceptions": ExceptionRow}[kind]
+             "settlement": SettlementReconResult, "exceptions": ExceptionRow,
+             "sku": SkuReconResult}[kind]
     rows = session.query(model).filter_by(run_id=run_id).all()
     df = pd.DataFrame([{k: v for k, v in r.__dict__.items() if k != "_sa_instance_state"} for r in rows])
     buf = io.BytesIO()

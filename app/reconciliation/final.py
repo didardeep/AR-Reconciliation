@@ -64,6 +64,7 @@ class FinalReconciliation(ReconciliationService):
         link: pd.DataFrame | None = None,
         settlement_packet_map: pd.DataFrame | None = None,
         tolerance: float | None = None,
+        packet_flags: dict[str, str] | None = None,
     ) -> ReconResult:
         tolerance = get_settings().recon_tolerance if tolerance is None else tolerance
         link_tbl = self._build_link(sales_result, settlement_result, link, settlement_packet_map)
@@ -110,10 +111,23 @@ class FinalReconciliation(ReconciliationService):
             merged["exception_type"].isna(), MatchStatus.MATCHED.value, MatchStatus.EXCEPTION.value
         )
 
+        # --- SKU-stage override: a packet with a SKU-level data error (same
+        #     SKU in RT+RTO, or returned qty > ordered) is forced to EXCEPTION
+        #     even when net_sales and net_settlement tie out within tolerance.
+        #     A dollar match must not mask a SKU-level data error. ---
+        sku_flagged = pd.Series(False, index=merged.index)
+        if packet_flags:
+            flagged_pids = merged["packet_id"].isin(packet_flags.keys())
+            sku_flagged = flagged_pids & merged["packet_id"].notna()
+            merged.loc[sku_flagged, "status"] = MatchStatus.EXCEPTION.value
+            merged.loc[sku_flagged, "exception_type"] = merged.loc[sku_flagged, "packet_id"].map(packet_flags)
+
         # --- exception feed: vectorized, and capped per type so we never build
         #     hundreds of thousands of objects. Full counts still come from the
-        #     result frame; the collector holds a reviewable sample + a summary. ---
-        self._log_exceptions_bulk(merged, tolerance)
+        #     result frame; the collector holds a reviewable sample + a summary.
+        #     SKU-forced rows are excluded here -- the SKU stage already
+        #     recorded them under the correct code/severity. ---
+        self._log_exceptions_bulk(merged[~sku_flagged], tolerance)
 
         out = merged[[
             "packet_id", "order_release_id", "net_sales", "net_settlement",

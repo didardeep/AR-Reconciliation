@@ -6,6 +6,7 @@ import RunPage from "./pages/RunPage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import ResultsPage from "./pages/ResultsPage.jsx";
 import ExceptionsPage from "./pages/ExceptionsPage.jsx";
+import SkuPage from "./pages/SkuPage.jsx";
 
 export default function App() {
   // The active reconciliation run is shared across pages.
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="/dashboard" element={<DashboardPage runId={runId} />} />
         <Route path="/results" element={<ResultsPage runId={runId} />} />
         <Route path="/exceptions" element={<ExceptionsPage runId={runId} />} />
+        <Route path="/sku" element={<SkuPage runId={runId} />} />
       </Routes>
     </Layout>
   );

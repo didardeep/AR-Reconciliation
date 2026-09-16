@@ -19,7 +19,7 @@ def test_read_excel_maps_and_preserves(tmp_xlsx):
 def test_no_duplicate_canonical_columns(tmp_path):
     p = tmp_path / "dup.xlsx"
     pd.DataFrame({"customer_paid_amount": [1], "taxable_amount": [2],
-                  "packet_id": ["P1"]}).to_excel(p, index=False)
+                  "packet_id": ["P1"], "sku_code": ["SKU-A"], "qty": [1]}).to_excel(p, index=False)
     df = read_excel(p, FileType.SALES_FORWARD)
     assert list(df.columns).count("shipment_value") == 1
 

@@ -8,6 +8,7 @@ import PlayCircleIcon from "@mui/icons-material/PlayCircle";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import TableChartIcon from "@mui/icons-material/TableChart";
 import ReportProblemIcon from "@mui/icons-material/ReportProblem";
+import Inventory2Icon from "@mui/icons-material/Inventory2";
 import { KPMG } from "../theme.js";
 
 const NAV = [
@@ -15,6 +16,7 @@ const NAV = [
   { to: "/run", label: "Run Reconciliation", icon: <PlayCircleIcon /> },
   { to: "/dashboard", label: "Dashboard", icon: <DashboardIcon /> },
   { to: "/results", label: "Results", icon: <TableChartIcon /> },
+  { to: "/sku", label: "SKU & Quantity", icon: <Inventory2Icon /> },
   { to: "/exceptions", label: "Exceptions", icon: <ReportProblemIcon /> },
 ];
 const DRAWER_W = 248;

@@ -42,6 +42,15 @@ def _agg(df: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def _exclude_withheld(df: pd.DataFrame | None, withheld: set[tuple[str, str]] | None) -> pd.DataFrame | None:
+    if df is None or df.empty or not withheld or "sku_code" not in df.columns:
+        return df
+    pid = df["packet_id"].astype(str).str.strip()
+    sku = df["sku_code"].astype(str).str.strip()
+    keep = ~pd.Series(list(zip(pid, sku)), index=df.index).isin(withheld)
+    return df[keep]
+
+
 def decide(
     forward_packets: pd.Series,
     rt: pd.DataFrame | None,
@@ -49,13 +58,23 @@ def decide(
     collector: ExceptionCollector,
     *,
     strategy: str | None = None,
+    withheld: set[tuple[str, str]] | None = None,
 ) -> ReverseDecision:
+    """withheld: (packet_id, sku_code) pairs whose lines the SKU stage has
+    already flagged as a data error (same SKU in RT+RTO, or over-returned).
+    Those lines are excluded from both rt_value/rto_value before this
+    function's packet-level presence check runs, so a packet with one bad
+    SKU and other clean SKUs resolves on the clean lines, and a packet
+    resolved as MIXED never includes a withheld line's value.
+    """
     settings = get_settings()
     strategy = strategy or settings.rt_rto_strategy
     indicator = settings.rt_rto_indicator_column
 
-    rt_agg = _agg(rt).rename(columns={"value": "rt_value"})
-    rto_agg = _agg(rto).rename(columns={"value": "rto_value"})
+    rt_clean = _exclude_withheld(rt, withheld)
+    rto_clean = _exclude_withheld(rto, withheld)
+    rt_agg = _agg(rt_clean).rename(columns={"value": "rt_value"})
+    rto_agg = _agg(rto_clean).rename(columns={"value": "rto_value"})
 
     fwd = pd.DataFrame({"packet_id": forward_packets.dropna().astype(str).unique()})
     m = fwd.merge(rt_agg.assign(packet_id=rt_agg.packet_id.astype(str)), on="packet_id", how="left")
@@ -98,7 +117,13 @@ def decide(
         # 2) presence-based fallback
         if chosen == ReverseType.NONE and strategy != "indicator_only":
             if row.in_rt and row.in_rto:
-                chosen = ReverseType.AMBIGUOUS
+                if withheld is not None:
+                    # SKU stage already excluded any (packet_id, sku_code)
+                    # data-error lines above -- what's left in both is a
+                    # legitimate split across different SKUs on this packet.
+                    chosen, value = ReverseType.MIXED, rt_v + rto_v
+                else:
+                    chosen = ReverseType.AMBIGUOUS
             elif row.in_rt:
                 chosen, value = ReverseType.RT, rt_v
             elif row.in_rto:

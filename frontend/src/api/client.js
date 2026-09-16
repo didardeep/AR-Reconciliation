@@ -23,6 +23,7 @@ export const getResults = (id, params) => api.get(`/api/reconciliation/${id}/res
 export const getExceptions = (id, params) => api.get(`/api/reconciliation/${id}/exceptions`, { params });
 export const getSales = (id, params) => api.get(`/api/reconciliation/${id}/sales`, { params });
 export const getSettlement = (id, params) => api.get(`/api/reconciliation/${id}/settlement`, { params });
+export const getSku = (id, params) => api.get(`/api/reconciliation/${id}/sku`, { params });
 
 export const exportUrl = (id, kind, fmt) =>
   `${baseURL}/api/reconciliation/${id}/export?kind=${kind}&fmt=${fmt}`;

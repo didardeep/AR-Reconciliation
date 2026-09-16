@@ -135,9 +135,9 @@ def map_columns(headers: list[str], file_type: FileType) -> dict[str, str]:
 
 def required_canonicals(file_type: FileType) -> list[str]:
     core = {
-        FileType.SALES_FORWARD: ["packet_id", "shipment_value"],
-        FileType.SALES_RT: ["packet_id", "shipment_value"],
-        FileType.SALES_RTO: ["packet_id", "shipment_value"],
+        FileType.SALES_FORWARD: ["packet_id", "shipment_value", "sku_code", "qty"],
+        FileType.SALES_RT: ["packet_id", "shipment_value", "sku_code", "qty"],
+        FileType.SALES_RTO: ["packet_id", "shipment_value", "sku_code", "qty"],
         FileType.SETTLEMENT_FORWARD: ["order_release_id", "customer_paid_amt"],
         FileType.SETTLEMENT_REVERSE: ["order_release_id", "customer_paid_amt"],
         FileType.SALES_SETTLEMENT_LINK: ["packet_id", "order_release_id"],

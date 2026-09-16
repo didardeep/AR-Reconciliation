@@ -44,7 +44,39 @@ def settle_rev():
 
 
 @pytest.fixture
+def fwd_sku():
+    return pd.DataFrame({
+        "packet_id": ["P001", "P001", "P002"],
+        "sku_code":  ["SKU-A", "SKU-B", "SKU-C"],
+        "shipment_value": [500, 300, 500],
+        "qty": [4, 2, 3],
+    })
+
+
+@pytest.fixture
+def rt_sku():
+    return pd.DataFrame({
+        "packet_id": ["P001"],
+        "sku_code":  ["SKU-A"],
+        "shipment_value": [125],
+        "qty": [1],
+    })
+
+
+@pytest.fixture
+def rto_sku():
+    return pd.DataFrame({
+        "packet_id": ["P001"],
+        "sku_code":  ["SKU-B"],
+        "shipment_value": [150],
+        "qty": [1],
+    })
+
+
+@pytest.fixture
 def tmp_xlsx(tmp_path):
     p = tmp_path / "sales.xlsx"
-    pd.DataFrame({"Packet ID": ["P1"], "Shipment Value": [10]}).to_excel(p, index=False)
+    pd.DataFrame({
+        "Packet ID": ["P1"], "Shipment Value": [10], "SKU Code": ["SKU-A"], "Qty": [1],
+    }).to_excel(p, index=False)
     return p

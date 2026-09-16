@@ -16,7 +16,8 @@ class ReverseType(str, Enum):
     RT = "RT"
     RTO = "RTO"
     NONE = "None"
-    AMBIGUOUS = "Ambiguous"      # packet present in both RT and RTO
+    AMBIGUOUS = "Ambiguous"      # same packet_id+sku_code present in both RT and RTO
+    MIXED = "Mixed"              # different SKUs on one packet split across RT and RTO
 
 
 class MatchStatus(str, Enum):
@@ -38,6 +39,7 @@ class ExceptionCode(str, Enum):
     RT_NOT_IN_FORWARD = "RT_NOT_IN_FORWARD"
     RTO_NOT_IN_FORWARD = "RTO_NOT_IN_FORWARD"
     RT_RTO_AMBIGUITY = "RT_RTO_AMBIGUITY"
+    PACKET_SPLIT_RT_RTO = "PACKET_SPLIT_RT_RTO"
     MISSING_SHIPMENT_VALUE = "MISSING_SHIPMENT_VALUE"
     INVALID_SHIPMENT_VALUE = "INVALID_SHIPMENT_VALUE"
     REVERSE_GT_FORWARD = "REVERSE_GT_FORWARD"

@@ -107,6 +107,12 @@ Status          = MATCHED if abs(Difference) ≤ tolerance else EXCEPTION       
 * **RT vs RTO is decided, never both subtracted.** Strategy is configurable
   (`RT_RTO_STRATEGY`): explicit indicator column first, else packet-id presence.
   A packet in both RT and RTO → `AMBIGUOUS`, value withheld, flagged.
+* **SKU + quantity is checked (`app/reconciliation/sku.py`), grain `packet_id`+`sku_code`.**
+  Returned qty can never exceed forward qty for a SKU line, and the same SKU
+  can't appear in both RT and RTO — either breach withholds that SKU's reverse
+  value and forces the packet to `EXCEPTION` in the final stage even if the
+  dollar totals tie out. Different SKUs on one packet split across RT and RTO
+  is legitimate (`MIXED`) and only raises a visibility warning.
 * **`packet_id` ≠ `order_release_id`.** The final stage needs a mapping (a link
   file, or a `packet_id` column on the settlement file). With neither, every
   record is flagged `MISSING_MAPPING` — the app never invents the relationship.
@@ -122,8 +128,8 @@ env-driven (`.env`); column mapping is data-driven (`config/column_mappings.yaml
 config/          settings (env) + column_mappings.yaml
 app/core/        enums, logging
 app/ingestion/   excel_reader (large-file streaming), column_mapper (configurable)
-app/validation/  data_quality (Data Quality Summary), sku_checks
-app/reconciliation/  base (abstract), rt_rto_selector, sales, settlement, month_checks, final
+app/validation/  data_quality (Data Quality Summary)
+app/reconciliation/  base (abstract), rt_rto_selector, sales, sku, settlement, month_checks, final
 app/services/    run_service (orchestrator)
 app/db/          base, session, models (all required tables, indexed)
 app/api/         routes_files, routes_reconciliation
