@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Exceptions - run #{{ run.run_id }}</h1>
+<div class="grid-side">
+<aside class="card">
+  <h2>By type</h2>
+  <ul class="typelist">
+    <li><a href="{{ url_for('exceptions', run_id=run.run_id) }}" class="{{ 'on' if not etype and not category }}">All</a></li>
+    {% for cat in ['RECONCILIATION', 'HYGIENE'] %}
+    <li class="head"><a href="{{ url_for('exceptions', run_id=run.run_id, category=cat) }}" class="{{ 'on' if category == cat and not etype }}">{{ cat|capitalize }}</a></li>
+    {% for g in groups if g.category == cat %}
+      <li><a href="{{ url_for('exceptions', run_id=run.run_id, type=g.exception_type) }}" class="{{ 'on' if etype == g.exception_type }}">{{ g.exception_type|label }} <span>{{ "{:,}".format(g.n) }}</span></a></li>
+    {% endfor %}
+    {% endfor %}
+  </ul>
+</aside>
+<section>
+  <form method="get" class="filters">
+    <input type="hidden" name="type" value="{{ etype }}"><input type="hidden" name="category" value="{{ category }}">
+    <input type="text" name="q" value="{{ q }}" placeholder="packet_id / order_release_id / text">
+    <button type="submit">Filter</button>
+    <a class="btn" href="{{ url_for('download', run_id=run.run_id) }}">Download Excel</a>
+  </form>
+  <p class="muted">{{ "{:,}".format(total) }} exception rows{% if truncated %} - only the first {{ "{:,}".format(shown) }} are shown on screen; the Excel download has everything{% endif %}. Page {{ page }} of {{ pages }}.</p>
+  <table class="tbl data">
+    <tr><th>Exception</th><th>Source</th><th>File row</th><th>packet_id</th><th>order_release_id</th><th class="r">Sales / expected</th><th class="r">Settlement / actual</th><th class="r">Difference</th><th>Detail</th></tr>
+    {% for e in rows %}
+    <tr>
+      <td><span class="pill {{ e.category }}">{{ e.exception_type|label }}</span></td>
+      <td>{{ datasets[e.dataset].label if e.dataset in datasets else (e.dataset or 'Net sales vs net settlement') }}</td>
+      <td>{% if e.row_no %}<a href="{{ url_for('source_row', dataset=e.dataset, row_no=e.row_no) }}" target="_blank">{{ e.row_no }}</a>{% endif %}</td>
+      <td>{{ e.packet_id or '' }}</td><td>{{ e.order_release_id or '' }}</td>
+      <td class="r">{{ e.amount_1|money }}</td><td class="r">{{ e.amount_2|money }}</td><td class="r">{{ e.difference|money }}</td>
+      <td class="wrap">{{ e.description }}</td>
+    </tr>
+    {% else %}<tr><td colspan="9">No exceptions for this filter.</td></tr>{% endfor %}
+  </table>
+  {% include "pager.html" %}
+</section>
+</div>
+{% endblock %}

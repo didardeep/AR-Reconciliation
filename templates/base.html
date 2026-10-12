@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}AR Reconciliation{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="top">
+  <div class="brand">AR Reconciliation <span>Sales vs Settlement</span></div>
+  <nav>
+    <a href="{{ url_for('index') }}" class="{{ 'on' if request.endpoint == 'index' }}">1. Upload data</a>
+    <a href="{{ url_for('run') }}" class="{{ 'on' if request.endpoint == 'run' }}">2. Run reconciliation</a>
+    <a href="{{ url_for('latest_summary') }}" class="{{ 'on' if request.endpoint == 'summary' }}">3. Summary</a>
+    {% if run is defined and run %}
+    <a href="{{ url_for('results', run_id=run.run_id) }}" class="{{ 'on' if request.endpoint == 'results' }}">4. Results</a>
+    <a href="{{ url_for('exceptions', run_id=run.run_id) }}" class="{{ 'on' if request.endpoint == 'exceptions' }}">5. Exceptions</a>
+    {% endif %}
+  </nav>
+</header>
+<main>
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, m in messages %}<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}
+{% endwith %}
+{% block content %}{% endblock %}
+</main>
+<script>
+// The Excel is built on the server before the download starts - show that something is happening
+document.addEventListener('click', function (e) {
+  var a = e.target.closest('a[href*="/download/"]');
+  if (!a) return;
+  if (a.dataset.busy) { e.preventDefault(); return; }
+  a.dataset.busy = '1';
+  var txt = a.textContent;
+  a.textContent = 'Preparing Excel... (large runs can take a few minutes)';
+  a.style.opacity = '0.6';
+  setTimeout(function () { a.textContent = txt; a.style.opacity = ''; delete a.dataset.busy; }, 120000);
+});
+</script>
+</body>
+</html>

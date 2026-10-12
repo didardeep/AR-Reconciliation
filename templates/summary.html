@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Run #{{ run.run_id }} - {{ run.recon_month.strftime('%B %Y') }}{% if run.platform_filter %} - {{ run.platform_filter }}{% endif %}</h1>
+<p class="lead">Ran {{ run.created_at.strftime('%d %b %Y %H:%M') }} · tolerance {{ run.tolerance }} · return window {{ run.return_window }} days.
+  <a class="btn" href="{{ url_for('download', run_id=run.run_id) }}">Download Excel</a></p>
+
+{% set total_keys = run.matched + run.unmatched + run.sales_only + run.settlement_only %}
+{% set compared = run.matched + run.unmatched %}
+<div class="stats">
+  <div class="stat"><b>{{ "{:,}".format(total_keys) }}</b>Total records{% if run.platform_filter %} ({{ run.platform_filter }}){% endif %}
+    <small>{{ "{:,}".format(compared) }} found on both sides</small></div>
+</div>
+<div class="stats">
+  <a class="stat good" href="{{ url_for('results', run_id=run.run_id, status='MATCHED') }}"><b>{{ "{:,}".format(run.matched) }}</b>Matched <small>of {{ "{:,}".format(compared) }} ({{ "%.1f"|format(100 * run.matched / (compared or 1)) }}%)</small></a>
+  <a class="stat bad" href="{{ url_for('results', run_id=run.run_id, status='UNMATCHED') }}"><b>{{ "{:,}".format(run.unmatched) }}</b>Unmatched <small>of {{ "{:,}".format(compared) }} ({{ "%.1f"|format(100 * run.unmatched / (compared or 1)) }}%)</small></a>
+  <a class="stat warn" href="{{ url_for('results', run_id=run.run_id, status='SALES_NOT_IN_SETTLEMENT') }}"><b>{{ "{:,}".format(run.sales_only) }}</b>Sales not in settlement</a>
+  <a class="stat warn" href="{{ url_for('results', run_id=run.run_id, status='SETTLEMENT_NOT_IN_SALES') }}"><b>{{ "{:,}".format(run.settlement_only) }}</b>Settlement not in sales</a>
+  <a class="stat" href="{{ url_for('exceptions', run_id=run.run_id, category='RECONCILIATION') }}"><b>{{ "{:,}".format(run.exception_count) }}</b>Reconciliation exceptions</a>
+  <a class="stat" href="{{ url_for('exceptions', run_id=run.run_id, category='HYGIENE') }}"><b>{{ "{:,}".format(run.hygiene_count) }}</b>Hygiene findings</a>
+</div>
+
+<div class="stats amounts">
+  <div class="stat"><b>{{ grand.net_sales|money }}</b>Net sales</div>
+  <div class="stat"><b>{{ grand.net_settlement|money }}</b>Net settlement</div>
+  <div class="stat"><b>{{ grand.difference|money }}</b>Difference (sales - settlement)</div>
+  <div class="stat good"><b>{{ grand.matched_amount|money }}</b>Matched amount</div>
+  <div class="stat bad"><b>{{ grand.mismatched_amount|money }}</b>Mismatched amount</div>
+</div>
+
+<div class="grid2">
+<section class="card">
+  <h2>Amounts by status</h2>
+  <table class="tbl">
+    <tr><th>Status</th><th class="r">Keys</th><th class="r">Net sales</th><th class="r">Net settlement</th><th class="r">Difference</th><th class="r">Matched amount</th><th class="r">Mismatched amount</th></tr>
+    {% for t in totals %}
+    <tr><td><a href="{{ url_for('results', run_id=run.run_id, status=t.status) }}">{{ t.status|label }}</a></td>
+        <td class="r">{{ "{:,}".format(t.n) }}</td><td class="r">{{ t.net_sales|money }}</td><td class="r">{{ t.net_settlement|money }}</td><td class="r">{{ t.difference|money }}</td>
+        <td class="r">{{ t.matched_amount|money }}</td><td class="r">{{ t.mismatched_amount|money }}</td></tr>
+    {% endfor %}
+    <tr class="total"><td>Total</td><td class="r">{{ "{:,}".format(grand.n) }}</td><td class="r">{{ grand.net_sales|money }}</td><td class="r">{{ grand.net_settlement|money }}</td>
+        <td class="r">{{ grand.difference|money }}</td><td class="r">{{ grand.matched_amount|money }}</td><td class="r">{{ grand.mismatched_amount|money }}</td></tr>
+  </table>
+  <p class="muted">Matched amount = net sales of Matched keys. Mismatched amount = |difference| of every key that is not Matched.<br>
+     Sales packets: {{ "{:,}".format(run.total_sales) }} · Settlement orders: {{ "{:,}".format(run.total_settlement) }} · Match rate: {{ "%.1f"|format(100 * run.matched / (run.total_sales or 1)) }}% of sales packets.</p>
+</section>
+<section class="card">
+  <h2>Exceptions by type</h2>
+  <table class="tbl">
+    <tr><th>Category</th><th>Exception</th><th class="r">Rows</th></tr>
+    {% for e in etypes %}
+    <tr><td>{{ e.category|capitalize }}</td><td><a href="{{ url_for('exceptions', run_id=run.run_id, type=e.exception_type) }}">{{ e.exception_type|label }}</a></td><td class="r">{{ "{:,}".format(e.n) }}</td></tr>
+    {% else %}<tr><td colspan="3">No exceptions.</td></tr>
+    {% endfor %}
+  </table>
+</section>
+</div>
+
+<section class="card">
+  <h2>Hygiene checks - all checks, per file</h2>
+  {% if checks %}
+  <table class="tbl">
+    <tr><th>Hygiene check</th><th>File</th><th>Column(s) checked</th><th class="r">Records checked</th><th class="r">Records failed</th><th>Result</th><th>Note</th></tr>
+    {% for c in checks %}
+    <tr><td>{% if c.status == 'FAIL' %}<a href="{{ url_for('exceptions', run_id=run.run_id, type=c.check_code) }}">{{ c.check_name }}</a>{% else %}{{ c.check_name }}{% endif %}</td>
+        <td>{{ datasets[c.dataset].label if c.dataset in datasets else '' }}</td><td class="wrap">{{ c.columns_checked or '' }}</td>
+        <td class="r">{{ "{:,}".format(c.records_checked) if c.records_checked is not none }}</td>
+        <td class="r">{{ "{:,}".format(c.records_failed) if c.records_failed is not none }}</td>
+        <td><span class="pill res-{{ c.status|replace(' ', '') }}">{{ c.status|capitalize }}</span></td><td class="wrap">{{ c.note or '' }}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">The list of checks was not recorded for this run (it was made before checks were logged). Run the reconciliation again to see it.</p>{% endif %}
+</section>
+
+{% if mapping_rows %}
+<section class="card">
+  <details>
+    <summary><h2 class="inline">Column mapping used in this run</h2></summary>
+    <table class="tbl">
+      <tr><th>Side</th><th>File</th><th>Field</th><th>Column chosen</th></tr>
+      {% for r in mapping_rows %}<tr><td>{{ r.side }}</td><td>{{ r.dataset }}</td><td>{{ r.field }}</td><td>{{ r.file_column }}</td></tr>{% endfor %}
+    </table>
+  </details>
+</section>
+{% endif %}
+{% endblock %}

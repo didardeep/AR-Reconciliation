@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Results - run #{{ run.run_id }}</h1>
+<form method="get" class="filters">
+  <select name="status"><option value="">All statuses</option>
+    {% for k, v in statuses.items() %}<option value="{{ k }}" {{ 'selected' if k == status }}>{{ v }}</option>{% endfor %}</select>
+  <input type="text" name="q" value="{{ q }}" placeholder="packet_id / order_release_id">
+  <button type="submit">Filter</button>
+  <a class="btn" href="{{ url_for('download_results', run_id=run.run_id, status=status or None, q=q or None) }}">Download these results</a>
+  <a class="btn" href="{{ url_for('download', run_id=run.run_id) }}">Full report (all sheets)</a>
+</form>
+<p class="muted">{{ "{:,}".format(total) }} rows{% if truncated %} - only the first {{ "{:,}".format(shown) }} are shown on screen; the Excel download has everything{% endif %}. Page {{ page }} of {{ pages }}.</p>
+<table class="tbl data">
+  <tr><th>Status</th><th>packet_id (sales)</th><th>order_release_id (settlement)</th><th class="r">Forward sales</th><th>Return</th><th class="r">Return amt</th>
+      <th class="r">Net sales</th><th class="r">Forward settlement</th><th class="r">Reverse settlement</th><th class="r">Net settlement</th><th class="r">Difference</th><th class="r">Matched amt</th><th class="r">Mismatched amt</th></tr>
+  {% for r in rows %}
+  <tr class="s-{{ r.status }}">
+    <td><span class="pill {{ r.status }}">{{ r.status|label }}</span></td>
+    <td>{{ r.packet_id or '-' }}</td><td>{{ r.order_release_id or '-' }}</td>
+    <td class="r">{{ r.forward_sales|money }}</td><td>{{ r.return_source or '' }}</td><td class="r">{{ r.return_amount|money }}</td>
+    <td class="r"><strong>{{ r.net_sales|money }}</strong></td>
+    <td class="r">{{ r.forward_settlement|money }}</td><td class="r">{{ r.reverse_settlement|money }}</td>
+    <td class="r"><strong>{{ r.net_settlement|money }}</strong></td><td class="r">{{ r.difference|money }}</td>
+    <td class="r">{{ r.matched_amount|money }}</td><td class="r">{{ r.mismatched_amount|money }}</td>
+  </tr>
+  {% else %}<tr><td colspan="13">No rows.</td></tr>{% endfor %}
+</table>
+{% include "pager.html" %}
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Upload the five datasets</h1>
+<p class="lead">Each file is loaded into its own PostgreSQL table using the exact column names of the file. Upload one file per dataset (or several with <em>append</em>).</p>
+
+<div class="grid2">
+<section class="card">
+  <h2>Load a file</h2>
+  <form method="post" action="{{ url_for('upload') }}" enctype="multipart/form-data" class="form">
+    <label>Dataset
+      <select name="dataset" required>
+        {% for d in order %}<option value="{{ d }}">{{ datasets[d].label }} &rarr; table {{ d }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>File (.xlsx / .xls / .csv)
+      <input type="file" name="file" accept=".xlsx,.xls,.xlsm,.csv,.txt" required>
+    </label>
+    <label>Sheet name or index (Excel only; blank = first sheet)
+      <input type="text" name="sheet" placeholder="e.g. Sheet1 or 0">
+    </label>
+    <label>Load mode
+      <select name="mode">
+        <option value="replace">Replace - clear the table first</option>
+        <option value="append">Append - keep rows already loaded</option>
+      </select>
+    </label>
+    <button type="submit">Load file</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Loaded so far</h2>
+  <table class="tbl">
+    <tr><th>Dataset</th><th>Table</th><th>Key</th><th class="r">Rows</th><th class="r">Files</th><th></th></tr>
+    {% for d in order %}
+    <tr>
+      <td>{{ datasets[d].label }}</td><td><code>{{ d }}</code></td><td><code>{{ datasets[d].key }}</code></td>
+      <td class="r">{{ "{:,}".format(counts[d].rows) }}</td><td class="r">{{ counts[d].files }}</td>
+      <td><form method="post" action="{{ url_for('clear', dataset=d) }}" onsubmit="return confirm('Clear all rows of {{ d }}?')"><button class="small ghost">Clear</button></form></td>
+    </tr>
+    {% endfor %}
+  </table>
+  <p><a class="btn" href="{{ url_for('run') }}">Continue to run reconciliation</a></p>
+</section>
+</div>
+
+{% if log %}
+<section class="card">
+  <h2>Upload history</h2>
+  <table class="tbl">
+    <tr><th>When</th><th>Dataset</th><th>File</th><th>Sheet</th><th class="r">Rows</th><th>Mode</th><th>Columns added from file</th><th>Schema columns missing in file</th></tr>
+    {% for l in log %}
+    <tr><td>{{ l.loaded_at.strftime('%d %b %Y %H:%M') }}</td><td>{{ l.dataset }}</td><td>{{ l.file_name }}</td><td>{{ l.sheet }}</td>
+        <td class="r">{{ "{:,}".format(l.rows_loaded) }}</td><td>{{ l.mode }}</td>
+        <td class="wrap">{{ l.added_columns or '-' }}</td><td class="wrap">{{ l.missing_columns or '-' }}</td></tr>
+    {% endfor %}
+  </table>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% macro fieldrow(d, f) %}
+<label class="maprow">
+  <span class="mapname">{{ f.label }}{% if f.required %} <b class="req" title="Required">*</b>{% endif %}</span>
+  <select name="map__{{ d.name }}__{{ f.role }}" form="runform" data-dataset="{{ d.name }}" data-role="{{ f.role }}"
+          data-label="{{ d.label }} &rarr; {{ f.label }}" {% if f.required %}data-required="1"{% endif %}>
+    <option value="">{{ '-- choose a column --' if f.required else '-- not used (check is skipped) --' }}</option>
+    {% for c, h in d.columns %}<option value="{{ c }}" {{ 'selected' if c == f.selected }}>{{ h }}</option>{% endfor %}
+  </select>
+  {% if f.help %}<small>{{ f.help }}</small>{% endif %}
+</label>
+{% endmacro %}
+{% block content %}
+<h1>Run reconciliation</h1>
+<div class="grid2">
+<section class="card">
+  <h2>1. Parameters</h2>
+  <form method="post" class="form" id="runform">
+    <label>Reconciliation month
+      <input type="month" name="month" value="{{ default_month }}" required>
+      <small>Rows whose period date falls outside this month are flagged (hygiene check).</small>
+    </label>
+    <label>Amount tolerance (INR)
+      <input type="number" step="0.001" name="tolerance" value="{{ values.get('tolerance', cfg.DEFAULT_TOLERANCE) }}">
+      <small>|net sales - net settlement| within this value = Matched.</small>
+    </label>
+    <label>Return window (days)
+      <input type="number" name="return_window" value="{{ values.get('return_window', cfg.DEFAULT_RETURN_WINDOW_DAYS) }}">
+      <small>Returns received later than this after shipping are flagged.</small>
+    </label>
+    <label>Commission / tax recomputation tolerance (INR)
+      <input type="number" step="0.01" name="commission_tol" value="{{ values.get('commission_tol', cfg.DEFAULT_COMMISSION_TOLERANCE) }}">
+    </label>
+    <label>Platform (settlement files)
+      <select name="platform" id="platform">
+        <option value="">All platforms</option>
+        {% for p in platforms %}<option value="{{ p }}" {{ 'selected' if p == values.get('platform') }}>{{ p }}</option>{% endfor %}
+      </select>
+      <small>Filters both settlement files on the column mapped as <em>Platform</em> below.</small>
+    </label>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Data ready</h2>
+  <table class="tbl">
+    <tr><th>Dataset</th><th class="r">Rows</th></tr>
+    {% for d in order %}<tr><td>{{ datasets[d].label }}</td><td class="r {{ 'warn' if counts[d].rows == 0 }}">{{ "{:,}".format(counts[d].rows) }}</td></tr>{% endfor %}
+  </table>
+  <h2>What the engine does</h2>
+  <ol class="steps">
+    <li>Hygiene checks on all five tables (blank columns, blank keys, non-numeric amounts, unreadable dates, dates outside the month, duplicates, return amount / SKU / window checks). Every check is listed in the Excel output with Pass / Fail.</li>
+    <li><strong>Net sales</strong> per <em>Packet ID</em>: forward <em>Sales amount</em> minus RT <em>Return amount</em>; RTO only when the packet is not in RT.</li>
+    <li><strong>Net settlement</strong> per <em>Order release ID</em>: forward <em>Settlement amount</em> minus <em>Reverse settlement amount</em>.</li>
+    <li>Compare on <em>Packet ID</em> = <em>Order release ID</em>; classify Matched / Unmatched / one-sided.</li>
+    <li>Build the exception register (short/excess settlement, missing sides, id mismatches, commission &amp; tax variances).</li>
+  </ol>
+  <p class="muted">The names in italics are the fields you map to file columns in step 2; the SQL uses the columns you pick.</p>
+</section>
+</div>
+
+<section class="card">
+  <h2>2. Column mapping</h2>
+  <p class="muted">For every file, pick the column that plays each role in the logic. The dropdowns list the column names found in the uploaded file.
+     Fields marked <b class="req">*</b> are required; an optional field left as "not used" switches the related check off. Your choice is remembered for the next run.</p>
+  <div class="mapgrid">
+    {% for side in sides %}
+    <div class="mapside">
+      <h3>{{ side.side }}</h3>
+      {% for d in side.datasets %}
+      <fieldset class="mapfile">
+        <legend>{{ d.label }} <span>{% if d.rows %}{{ "{:,}".format(d.rows) }} rows &middot; {{ d.columns|length }} columns{% else %}no file loaded{% endif %}</span></legend>
+        {% for f in d.fields if not f.advanced %}{{ fieldrow(d, f) }}{% endfor %}
+        {% if d.fields|selectattr('advanced')|list %}
+        <details>
+          <summary>Commission &amp; tax re-computation columns</summary>
+          {% for f in d.fields if f.advanced %}{{ fieldrow(d, f) }}{% endfor %}
+        </details>
+        {% endif %}
+      </fieldset>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  <div class="runbar">
+    <button type="submit" form="runform" id="runbtn">Run reconciliation</button>
+    <span id="mapmissing" class="bad"></span>
+  </div>
+</section>
+
+{% if runs %}
+<section class="card">
+  <h2>Previous runs</h2>
+  <table class="tbl">
+    <tr><th>Run</th><th>When</th><th>Month</th><th>Platform</th><th>Status</th><th class="r">Matched</th><th class="r">Unmatched</th><th class="r">Exceptions</th><th></th></tr>
+    {% for r in runs %}
+    <tr><td>#{{ r.run_id }}</td><td>{{ r.created_at.strftime('%d %b %Y %H:%M') }}</td><td>{{ r.recon_month.strftime('%b %Y') if r.recon_month }}</td>
+        <td>{{ r.platform_filter or 'All' }}</td><td class="{{ 'bad' if r.status == 'FAILED' }}">{{ r.status }}{% if r.message %} - {{ r.message[:120] }}{% endif %}</td>
+        <td class="r">{{ r.matched if r.matched is not none }}</td><td class="r">{{ r.unmatched if r.unmatched is not none }}</td>
+        <td class="r">{{ (r.exception_count or 0) + (r.hygiene_count or 0) if r.status == 'DONE' }}</td>
+        <td>{% if r.status == 'DONE' %}<a href="{{ url_for('summary', run_id=r.run_id) }}">Open</a>{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+</section>
+{% endif %}
+
+<script>
+(function () {
+  var selects = Array.prototype.slice.call(document.querySelectorAll('select[name^="map__"]'));
+  var btn = document.getElementById('runbtn'), msg = document.getElementById('mapmissing');
+
+  // The run is blocked until every required field has a column
+  function check() {
+    var missing = [];
+    selects.forEach(function (s) {
+      var bad = s.dataset.required && !s.value;
+      s.classList.toggle('missing', !!bad);
+      if (bad) missing.push(s.dataset.label);
+    });
+    btn.disabled = missing.length > 0;
+    msg.textContent = missing.length ? 'Choose a column for: ' + missing.join(', ') : '';
+  }
+
+  // Platform filter values come from whichever column is mapped as Platform on Settlement - Forward
+  function refillPlatforms(column) {
+    var sel = document.getElementById('platform'), keep = sel.value;
+    function fill(values) {
+      sel.innerHTML = '<option value="">All platforms</option>';
+      values.forEach(function (v) {
+        var o = document.createElement('option');
+        o.value = v; o.textContent = v; if (v === keep) o.selected = true;
+        sel.appendChild(o);
+      });
+    }
+    if (!column) { fill([]); return; }
+    fetch('{{ url_for("column_values", dataset="settlement_forward") }}?column=' + encodeURIComponent(column))
+      .then(function (r) { return r.json(); }).then(fill).catch(function () { fill([]); });
+  }
+
+  selects.forEach(function (s) {
+    s.addEventListener('change', function () {
+      check();
+      if (s.dataset.dataset === 'settlement_forward' && s.dataset.role === 'platform') refillPlatforms(s.value);
+    });
+  });
+  check();
+})();
+</script>
+{% endblock %}

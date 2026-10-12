@@ -1,0 +1,8 @@
+{% if pages > 1 %}
+<nav class="pager">
+  {% set args = request.args.to_dict() %}
+  {% if page > 1 %}{% set _ = args.update({'page': page - 1}) %}<a href="{{ url_for(request.endpoint, run_id=run.run_id, **args) }}">&larr; Previous</a>{% endif %}
+  <span>Page {{ page }} / {{ pages }}</span>
+  {% if page < pages %}{% set _ = args.update({'page': page + 1}) %}<a href="{{ url_for(request.endpoint, run_id=run.run_id, **args) }}">Next &rarr;</a>{% endif %}
+</nav>
+{% endif %}

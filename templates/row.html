@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ label }} - file row {{ row._row_no }}</h1>
+<p class="muted">Source file: {{ row._source_file }}</p>
+<table class="tbl kv">
+  {% for k, v in row.items() if not k.startswith('_') and v not in (None, '') %}
+  <tr><th>{{ k }}</th><td>{{ v }}</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}
