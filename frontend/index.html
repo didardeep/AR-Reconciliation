@@ -1,0 +1,1639 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ReconOne — Marketplace Reconciliation</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0B2545;--navy-3:#1B4079;--cobalt:#1E5EFF;--cobalt-soft:#e7eeff;--teal:#0FA3A3;--teal-soft:#e4f6f5;
+  --ink:#101827;--slate:#5b6b82;--line:#e6eaf1;--line-2:#eef1f6;--paper:#f6f8fc;--white:#fff;
+  --green:#159a63;--green-soft:#e5f6ee;--amber:#c47f04;--amber-soft:#fbf1da;--red:#cc3340;--red-soft:#fbe7e8;
+  --purple:#7b61ff;--purple-soft:#efeaff;
+  --shadow:0 1px 2px rgba(11,37,69,.06),0 8px 24px rgba(11,37,69,.05);--shadow-lg:0 12px 40px rgba(11,37,69,.14);--r:14px;
+}
+*{box-sizing:border-box}html,body{margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+.mono{font-family:'IBM Plex Mono',monospace}
+button{font-family:inherit}
+.app{display:grid;grid-template-columns:264px 1fr;min-height:100vh}
+
+/* Sidebar */
+.sidebar{background:linear-gradient(178deg,var(--navy) 0%,#081a34 100%);color:#cfe0f6;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;border-right:1px solid rgba(255,255,255,.06)}
+.brand{padding:22px 20px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,.08)}
+.brand .mark{width:38px;height:38px;border-radius:10px;flex:none;background:linear-gradient(135deg,var(--cobalt),var(--teal));display:grid;place-items:center;color:#fff;font-weight:800;font-size:17px;box-shadow:0 6px 16px rgba(30,94,255,.4)}
+.brand h1{font-size:16px;color:#fff;margin:0;font-weight:700;letter-spacing:-.2px}
+.brand span{font-size:11px;color:#7f9cc8;letter-spacing:.4px;text-transform:uppercase;font-weight:600}
+.nav{padding:12px 12px;flex:1}
+.nav-label{font-size:10.5px;letter-spacing:.9px;text-transform:uppercase;color:#5f7bab;font-weight:700;padding:14px 12px 6px}
+.nav-item{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:9px 12px;margin:2px 0;border:0;background:transparent;color:#c3d5f0;border-radius:10px;cursor:pointer;font-size:13px;font-weight:500;position:relative;transition:background .16s,color .16s}
+.nav-item .ico{width:18px;height:18px;flex:none;opacity:.85}
+.nav-item .badge{margin-left:auto;font-size:10px;font-weight:700;background:rgba(204,51,64,.9);color:#fff;border-radius:20px;padding:2px 7px;min-width:20px;text-align:center}
+.nav-item .badge.g{background:rgba(21,154,99,.9)}.nav-item .badge.a{background:rgba(196,127,4,.95)}
+.nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav-item.active{background:linear-gradient(90deg,rgba(30,94,255,.22),rgba(30,94,255,.05));color:#fff}
+.nav-item.active::before{content:"";position:absolute;left:-12px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--teal)}
+.sidebar-foot{padding:14px 20px;border-top:1px solid rgba(255,255,255,.08);font-size:11px;color:#7f9cc8}
+.sidebar-foot .run{display:flex;align-items:center;gap:8px;margin-bottom:6px;color:#bcd}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 3px rgba(15,163,163,.25)}
+
+/* Main */
+.main{display:flex;flex-direction:column;min-width:0}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(246,248,252,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:16px 30px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.topbar .titles h2{margin:0;font-size:19px;font-weight:700;letter-spacing:-.3px}
+.topbar .titles p{margin:2px 0 0;font-size:12.5px;color:var(--slate)}
+.spacer{flex:1}
+.filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{font-size:12px;font-weight:600;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--white);color:var(--slate);cursor:pointer;display:flex;align-items:center;gap:6px;transition:.15s}
+.chip:hover{border-color:var(--cobalt);color:var(--cobalt)}
+.chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.chip .swatch{width:8px;height:8px;border-radius:2px}
+.pill{font-size:12px;font-weight:600;padding:7px 14px;border-radius:10px;background:var(--white);border:1px solid var(--line);color:var(--ink);display:flex;align-items:center;gap:8px}
+.content{padding:26px 30px 60px;max-width:1440px}
+.page{animation:fade .35s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.sec{margin:30px 0 14px;display:flex;align-items:center;gap:12px}
+.sec:first-child{margin-top:4px}
+.sec .k{font-size:10.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--cobalt);background:var(--cobalt-soft);padding:4px 9px;border-radius:6px}
+.sec h3{margin:0;font-size:15px;font-weight:700;letter-spacing:-.2px}
+.sec .rule{flex:1;height:1px;background:var(--line)}
+
+.kpis{display:grid;gap:14px}
+.kpis.c5{grid-template-columns:repeat(5,1fr)}.kpis.c4{grid-template-columns:repeat(4,1fr)}.kpis.c3{grid-template-columns:repeat(3,1fr)}
+.kcard{background:var(--white);border:1px solid var(--line);border-radius:var(--r);padding:16px 17px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.kcard .lab{font-size:12px;color:var(--slate);font-weight:600;display:flex;align-items:center;gap:7px}
+.kcard .val{font-size:24px;font-weight:800;letter-spacing:-.8px;margin-top:9px;line-height:1}
+.kcard .sub{font-size:11.5px;margin-top:8px;color:var(--slate);display:flex;align-items:center;gap:6px}
+.kcard .accent{position:absolute;left:0;top:0;bottom:0;width:4px}
+.kcard.good .accent{background:var(--green)}.kcard.warn .accent{background:var(--amber)}.kcard.bad .accent{background:var(--red)}.kcard.info .accent{background:var(--cobalt)}.kcard.tealc .accent{background:var(--teal)}.kcard.purp .accent{background:var(--purple)}
+.trend{font-weight:700;padding:2px 6px;border-radius:5px;font-size:11px}
+.trend.up{color:var(--green);background:var(--green-soft)}.trend.down{color:var(--red);background:var(--red-soft)}
+
+.grid{display:grid;gap:16px}
+.grid.g2{grid-template-columns:1fr 1fr}.grid.g23{grid-template-columns:1.2fr .8fr}.grid.g32{grid-template-columns:.85fr 1.15fr}
+.panel{background:var(--white);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+.panel .ph{padding:15px 18px;border-bottom:1px solid var(--line-2);display:flex;align-items:center;gap:10px}
+.panel .ph h4{margin:0;font-size:13.5px;font-weight:700}
+.panel .ph .hint{margin-left:auto;font-size:11.5px;color:var(--slate)}
+.panel .pb{padding:16px 18px}
+.chart-wrap{position:relative;height:260px}.chart-wrap.sm{height:200px}
+
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+thead th{text-align:left;font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--slate);font-weight:700;padding:11px 14px;border-bottom:1px solid var(--line);background:#fbfcfe;white-space:nowrap}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--line-2);white-space:nowrap;color:var(--ink)}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:#f9fbff}
+tr.clickable{cursor:pointer}
+td.r,th.r{text-align:right}
+.tag{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;display:inline-block}
+.t-open{background:var(--red-soft);color:var(--red)}.t-prog{background:var(--amber-soft);color:var(--amber)}.t-closed{background:var(--green-soft);color:var(--green)}.t-review{background:var(--cobalt-soft);color:var(--cobalt)}.t-purple{background:var(--purple-soft);color:var(--purple)}
+.neg{color:var(--red);font-weight:600}.pos{color:var(--green);font-weight:600}
+.mkt{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.mkt .swatch{width:8px;height:8px;border-radius:2px}
+
+/* bulk bar + checkboxes */
+.bulkbar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fbfcfe;border-bottom:1px solid var(--line-2);font-size:12px;color:var(--slate);flex-wrap:wrap}
+.bulkbar .selinfo{font-weight:600;color:var(--ink)}
+.btn{font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.15s}
+.btn:hover{border-color:var(--cobalt);color:var(--cobalt)}
+.btn.pri{background:var(--cobalt);border-color:var(--cobalt);color:#fff}.btn.pri:hover{background:#1a52e0;color:#fff}
+.btn.sm{padding:4px 9px;font-size:11px}
+.ck{width:15px;height:15px;accent-color:var(--cobalt);cursor:pointer}
+
+/* hero */
+.hero{background:linear-gradient(120deg,var(--navy) 0%,var(--navy-3) 60%,#1f4f96 100%);border-radius:18px;padding:26px 28px;color:#fff;box-shadow:var(--shadow-lg);position:relative;overflow:hidden;margin-bottom:22px}
+.hero::after{content:"";position:absolute;right:-40px;top:-40px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(15,163,163,.35),transparent 65%)}
+.hero .eyebrow{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#8fb2e8;font-weight:700}
+.hero .lead{display:flex;gap:34px;flex-wrap:wrap;align-items:flex-end;margin-top:10px;position:relative}
+.hero .big{font-size:44px;font-weight:800;letter-spacing:-1.5px;line-height:1}
+.hero .big small{font-size:16px;font-weight:600;opacity:.7;margin-left:4px}
+.hero .leak-lab{font-size:13px;color:#c7d8f2;margin-top:6px;max-width:340px}
+.hero .stat{border-left:1px solid rgba(255,255,255,.18);padding-left:22px}
+.hero .stat .n{font-size:22px;font-weight:800;letter-spacing:-.5px}
+.hero .stat .l{font-size:11.5px;color:#a9c3ea;margin-top:2px}
+
+.modgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.modcard{background:var(--white);border:1px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);cursor:pointer;transition:.18s;text-align:left;display:flex;flex-direction:column;gap:10px}
+.modcard:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:var(--cobalt)}
+.modcard .top{display:flex;align-items:center;justify-content:space-between}
+.modcard .mi{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:#fff}
+.modcard .health{font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px}
+.modcard .name{font-size:13px;font-weight:700;line-height:1.3}
+.modcard .metric{font-size:20px;font-weight:800;letter-spacing:-.5px}
+.modcard .mlab{font-size:11px;color:var(--slate)}
+.bar{height:6px;border-radius:4px;background:var(--line-2);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:4px}
+
+.funnel{display:flex;flex-direction:column;gap:7px}
+.fstep{display:flex;align-items:center;gap:14px}
+.fstep .fbar{height:38px;border-radius:8px;display:flex;align-items:center;padding:0 14px;color:#fff;font-weight:700;font-size:13px;min-width:90px}
+.fstep .fmeta{font-size:12px;color:var(--slate)}.fstep .fmeta b{color:var(--ink);font-size:13px}
+.fstep .drop{font-size:11px;color:var(--red);font-weight:600}
+
+.journey{display:flex;gap:0;overflow-x:auto;padding:6px 2px}
+.jstep{flex:1;min-width:104px;text-align:center;position:relative;padding:0 4px}
+.jstep .jc{width:30px;height:30px;border-radius:50%;margin:0 auto 8px;display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff;position:relative;z-index:2}
+.jstep .jl{font-size:10.5px;font-weight:600;color:var(--ink);line-height:1.25}
+.jstep .jn{font-size:11px;color:var(--slate);margin-top:3px;font-weight:700}
+.jstep::before{content:"";position:absolute;top:15px;left:-50%;width:100%;height:2px;background:var(--line);z-index:1}
+.jstep:first-child::before{display:none}.jstep.done::before{background:var(--teal)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--slate);margin-top:12px}
+.legend span{display:flex;align-items:center;gap:6px}.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+
+.recon-flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+.rf-node{flex:1;min-width:120px;background:#fbfcfe;border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center}
+.rf-node .rn{font-size:11px;color:var(--slate);font-weight:600}.rf-node .rv{font-size:17px;font-weight:800;margin-top:4px}
+.rf-arrow{display:grid;place-items:center;padding:0 8px;color:var(--slate);font-size:18px}
+
+/* Kanban board */
+.board{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;overflow-x:auto}
+.bcol{background:#f4f7fc;border:1px solid var(--line);border-radius:12px;padding:10px;min-width:180px}
+.bcol .bh{display:flex;align-items:center;justify-content:space-between;padding:2px 4px 10px;font-size:12px;font-weight:700}
+.bcol .bh .cnt{font-size:11px;background:#fff;border:1px solid var(--line);border-radius:20px;padding:1px 8px;color:var(--slate)}
+.claim{background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px;margin-bottom:9px;cursor:pointer;transition:.15s;box-shadow:0 1px 2px rgba(11,37,69,.04)}
+.claim:hover{border-color:var(--cobalt);box-shadow:var(--shadow)}
+.claim .cid{font-size:11px;font-weight:700;color:var(--ink)}
+.claim .camt{font-size:15px;font-weight:800;margin:5px 0;letter-spacing:-.3px}
+.claim .cmeta{font-size:10.5px;color:var(--slate);display:flex;align-items:center;justify-content:space-between}
+.claim .cbar{height:3px;border-radius:3px;margin-top:8px;background:var(--line-2);overflow:hidden}
+
+/* confidence meter */
+.conf{display:flex;align-items:center;gap:8px}
+.conf .mtr{width:56px;height:6px;border-radius:4px;background:var(--line-2);overflow:hidden}
+.conf .mtr i{display:block;height:100%;border-radius:4px}
+.conf b{font-size:11.5px;font-weight:700}
+
+/* alert rows */
+.alert{display:flex;align-items:center;gap:14px;padding:13px 16px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:#fff;box-shadow:var(--shadow)}
+.alert .sev{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:16px;flex:none}
+.alert .amsg{flex:1}.alert .amsg .at{font-size:13px;font-weight:700}.alert .amsg .ad{font-size:11.5px;color:var(--slate);margin-top:2px}
+.alert .atime{font-size:11px;color:var(--slate);white-space:nowrap}
+.sev.hi{background:var(--red-soft)}.sev.md{background:var(--amber-soft)}.sev.lo{background:var(--cobalt-soft)}
+
+.note{background:var(--teal-soft);border:1px solid #bfe9e7;border-radius:12px;padding:14px 16px;font-size:12.5px;color:#0a5f5e;display:flex;gap:10px;margin-top:16px}
+.note b{color:#084848}
+.freshbadge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px}
+
+/* drawer */
+.scrim{display:none;position:fixed;inset:0;background:rgba(11,37,69,.4);z-index:40}
+.scrim.show{display:block}
+.drawer{position:fixed;top:0;right:0;height:100vh;width:440px;max-width:92vw;background:#fff;z-index:60;box-shadow:-20px 0 50px rgba(11,37,69,.25);transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
+.drawer.open{transform:none}
+.drawer .dh{padding:20px 22px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:12px}
+.drawer .dh .dt{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--cobalt)}
+.drawer .dh h3{margin:4px 0 0;font-size:18px;font-weight:800;letter-spacing:-.3px}
+.drawer .dh .x{margin-left:auto;width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer;font-size:16px;color:var(--slate);flex:none}
+.drawer .db{padding:20px 22px;overflow-y:auto;flex:1}
+.kv{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line-2);font-size:12.5px}
+.kv .kk{color:var(--slate)}.kv .vv{font-weight:600;text-align:right}
+.dsec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--slate);margin:20px 0 10px}
+.tl{position:relative;padding-left:22px}
+.tl .ti{position:relative;padding-bottom:16px;font-size:12px}
+.tl .ti::before{content:"";position:absolute;left:-16px;top:3px;width:9px;height:9px;border-radius:50%;background:var(--cobalt);box-shadow:0 0 0 3px var(--cobalt-soft)}
+.tl .ti::after{content:"";position:absolute;left:-12px;top:12px;bottom:0;width:1px;background:var(--line)}
+.tl .ti:last-child::after{display:none}
+.tl .ti .tt{font-weight:700}.tl .ti .td{color:var(--slate);font-size:11px}
+.dactions{display:flex;gap:8px;flex-wrap:wrap;padding:16px 22px;border-top:1px solid var(--line)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--navy);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:var(--shadow-lg);opacity:0;pointer-events:none;transition:.3s;z-index:80}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:1100px){.kpis.c5,.kpis.c4{grid-template-columns:repeat(2,1fr)}.modgrid{grid-template-columns:repeat(3,1fr)}.board{grid-template-columns:repeat(3,1fr)}.grid.g2,.grid.g23,.grid.g32{grid-template-columns:1fr}}
+@media(max-width:820px){.app{grid-template-columns:1fr}.sidebar{position:fixed;left:0;top:0;transform:translateX(-100%);transition:.25s;z-index:70;width:264px}.sidebar.open{transform:none}.hamburger{display:grid!important}.modgrid{grid-template-columns:repeat(2,1fr)}.kpis.c3,.kpis.c4,.kpis.c5{grid-template-columns:1fr 1fr}.content{padding:18px}.board{grid-template-columns:1fr}}
+.hamburger{display:none;place-items:center;width:38px;height:38px;border-radius:9px;border:1px solid var(--line);background:#fff;cursor:pointer}
+:focus-visible{outline:2px solid var(--cobalt);outline-offset:2px}
+
+/* ===== Sales vs Settlement (live module) ===== */
+.kcard.clickable{cursor:pointer;transition:transform .12s,box-shadow .12s,border-color .12s}
+.kcard.clickable:hover{transform:translateY(-2px);border-color:var(--cobalt)}
+.kcard.clickable:focus-visible{outline:2px solid var(--cobalt);outline-offset:2px}
+.kcard.clickable.on{border-color:var(--cobalt);box-shadow:0 0 0 2px var(--cobalt) inset,var(--shadow)}
+.kcard.clickable .lab::after{content:'▾';margin-left:auto;opacity:.45;font-size:12px}
+.kcard.clickable.on .lab::after{content:'▴';opacity:.8}
+.svs-chips{display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin;max-width:100%}
+.svs-chips .chip{flex:none;white-space:nowrap}
+.svs-chips .chip b{font-weight:700}
+.svs-chips .chip.on b{color:#fff}
+.svs-fbar{display:flex;flex-direction:column;gap:10px;align-items:stretch}
+.svs-fbar .svs-frow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.svs-kvp{margin-top:14px;border-color:var(--cobalt);animation:svsKvIn .18s ease-out}
+@keyframes svsKvIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.svs-kvp .ph{display:flex;align-items:center;gap:10px}
+.svs-kvp .ph .x{margin-left:auto}
+.svs-tabs{display:flex;gap:4px;align-items:center;border-bottom:1px solid var(--line);margin:-4px 0 18px;overflow-x:auto;scrollbar-width:none}
+.svs-tab{font:inherit;font-size:13px;font-weight:600;color:var(--slate);background:none;border:0;border-bottom:2px solid transparent;padding:10px 14px;cursor:pointer;white-space:nowrap}
+.svs-tab:hover{color:var(--ink)}.svs-tab.on{color:var(--cobalt);border-bottom-color:var(--cobalt)}
+.svs-db{margin-left:auto;font-size:11.5px;color:var(--slate);display:flex;align-items:center;gap:6px;white-space:nowrap;padding-left:12px}
+.svs-db .dot{width:7px;height:7px;border-radius:50%;display:inline-block}.svs-db .dot.ok{background:var(--green)}.svs-db .dot.bad{background:var(--red)}
+.svs-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.svs-f{font-size:12px;font-weight:600;color:var(--slate);display:flex;align-items:center;gap:8px}
+.svs select,.svs input[type=search],.svs input[type=month],.svs input[type=number],.svs input[type=text],.svs input:not([type]){font:inherit;font-size:12.5px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);min-width:0;max-width:100%}
+.svs select:focus,.svs input:focus{outline:2px solid var(--cobalt-soft);border-color:var(--cobalt)}
+.svs input[type=search]{width:260px}
+.svs a.btn,#drActions .btn{text-decoration:none}
+.btn.pri{background:var(--cobalt);border-color:var(--cobalt);color:#fff}.btn.pri:hover{filter:brightness(1.08)}
+.btn.lg{font-size:13.5px;padding:10px 20px}.btn[disabled]{opacity:.55;cursor:default}.btn.warn{border-color:var(--red);color:var(--red)}
+.svs-meta{font-size:11.5px;color:var(--slate)}
+.svs-empty{padding:28px;text-align:center;color:var(--slate);font-size:13px;line-height:1.7}.svs-empty.bad,.bad{color:var(--red)}
+.svs-dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:8px;vertical-align:middle}
+.svs-exc{display:flex;flex-wrap:wrap;gap:8px}.svs-exc .chip b{color:var(--ink)}.svs-exc .chip small{font-weight:500;opacity:.7}
+.chip.sm{padding:3px 9px;font-size:11px;display:inline-flex}
+.svs-filters{flex-wrap:wrap}
+.svs-x{max-width:260px;font-size:11.5px;color:var(--slate)}
+.svs-pager{display:flex;align-items:center;justify-content:center;gap:12px;padding:12px;font-size:12px;color:var(--slate)}
+.svs-calc{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px}
+.svs-calc hr{border:0;border-top:1px dashed var(--line);margin:8px 0}
+.svs-kv{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;padding:3px 0}.svs-kv span{color:var(--slate);word-break:break-word}.svs-kv b{text-align:right;word-break:break-word}
+.svs h5,#drBody h5{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--slate);margin:14px 0 8px}
+.svs-dv{font-size:12.5px;color:var(--ink)}
+.svs-src{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:6px}.svs-src>span{font-size:12px;color:var(--slate);min-width:140px}
+.svs-bar{margin-bottom:6px}
+.svs .chart-wrap{height:300px}
+.svs-det{margin-top:6px}.svs-det summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--cobalt);padding:6px 0}
+.svs-det .tbl-wrap{max-height:360px;overflow:auto;margin-top:6px}
+/* forms */
+.svs-form{display:grid;gap:12px}
+.svs-form label,.svs-params label,.svs-map{display:grid;gap:5px;font-size:12px;font-weight:600;color:var(--ink)}
+.svs-form small,.svs-params small,.svs-map small{font-weight:400;color:var(--slate);font-size:11px}
+.svs-file{position:relative;border:1.5px dashed var(--line);border-radius:10px;padding:18px;text-align:center;color:var(--slate);cursor:pointer;background:var(--paper)}
+.svs-file:hover{border-color:var(--cobalt);color:var(--cobalt)}.svs-file input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.svs-note{font-size:12.5px;line-height:1.6;padding:10px 12px;border-radius:8px;background:var(--cobalt-soft);color:var(--navy-3);margin:10px 0 0}
+.svs-note.ok{background:var(--green-soft);color:#0d6b44}.svs-note.warn{background:var(--amber-soft);color:#8a5a03}.svs-note.bad{background:var(--red-soft);color:var(--red)}
+.svs-note ul{margin:6px 0 0 18px;padding:0}
+.svs-steps{margin:0;padding-left:18px;font-size:12.5px;line-height:1.8;color:var(--ink)}
+.svs-x-btn{border:0;background:none;color:var(--slate);cursor:pointer;font-size:14px;line-height:1;padding:0 2px}.svs-x-btn:hover{color:var(--red)}
+.svs-flag{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:var(--amber-soft);color:var(--amber);font-size:10px;font-weight:800;margin-left:5px;cursor:help}.svs-flag.bad{background:var(--red-soft);color:var(--red)}
+.svs-kvp{scroll-margin-top:84px}.svs-kvp.flash{animation:svsFlash 1.4s ease-out}
+@keyframes svsFlash{0%{box-shadow:0 0 0 3px var(--cobalt)}100%{box-shadow:0 0 0 3px transparent}}
+.svs-kfsum{display:flex;gap:18px;align-items:center;flex-wrap:wrap;padding-bottom:0}.svs-kfsum p{margin:0;flex:1;min-width:240px}
+.svs-kfbig{display:grid}.svs-kfbig b{font-size:22px;color:var(--ink)}.svs-kfbig span{font-size:11px;color:var(--slate)}
+.svs-up1{max-width:640px}
+.svs td.svs-xc{min-width:220px;width:280px;max-width:280px;white-space:normal}.svs-xt{display:inline-block;font-size:10.5px;font-weight:600;line-height:1.35;padding:2px 7px;margin:2px 3px 2px 0;border-radius:6px;background:var(--red-soft);color:var(--red);white-space:normal}
+.svs-xt.more{background:var(--paper);color:var(--slate);border:1px solid var(--line)}
+.svs-rbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;background:var(--paper);border-bottom:1px solid var(--line)}
+.svs-fsel{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden;min-width:0;transition:border-color .15s,box-shadow .15s}
+.svs-fsel>span{font-size:10.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;padding:0 10px;align-self:stretch;display:grid;place-items:center;white-space:nowrap}
+.svs .svs-fsel select,.svs .svs-fsel input{border:0;border-radius:0;outline:0;background:transparent;min-width:0}
+.svs-fsel.st>span{background:#e8efff;color:#1e4fd8}.svs-fsel.st{border-color:#c9d8ff}
+.svs-fsel.ex>span{background:#fde8ea;color:#b4232f}.svs-fsel.ex{border-color:#f4c6cb}
+.svs-fsel.sr>span{background:#eef1f6;color:var(--slate)}
+.svs-fsel.st.on{border-color:#1e4fd8;box-shadow:0 0 0 2px #c9d8ff}.svs-fsel.st.on>span{background:#1e4fd8;color:#fff}
+.svs-fsel.ex.on{border-color:#cc3340;box-shadow:0 0 0 2px #f8d3d7}.svs-fsel.ex.on>span{background:#cc3340;color:#fff}
+.svs .svs-fsel #svsStSel{width:190px}.svs .svs-fsel #svsExcSel{width:220px}.svs .svs-fsel #svsQ{width:170px}
+.svs-rrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+.svs-rrow>#svsStatusChips{flex:1;min-width:0}
+.svs-rlab{font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--slate);min-width:70px}
+.svs-rrow .svs-rlab+select,.svs-rrow .svs-rlab+input{width:auto}
+.svs-count{font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap}
+@media (max-width:640px){.svs-fsel{width:100%}.svs .svs-fsel select,.svs .svs-fsel input{flex:1;width:auto!important}}
+.svs-params{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 18px}.svs-full{grid-column:1/-1}
+.svs-side-h{font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--slate);margin:0 0 8px}
+.svs-ds{margin-bottom:14px}.svs-ds .pb{display:grid;gap:12px}
+.svs-map span{display:block}.req{color:var(--red)}
+.svs-runbar{position:sticky;bottom:0;display:flex;align-items:center;gap:12px;padding:14px 0;background:linear-gradient(to top,var(--paper) 70%,transparent);z-index:5}
+.svs-runbar .svs-note{margin:0}
+.svs-spin{display:inline-block;width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:svsspin .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes svsspin{to{transform:rotate(360deg)}}
+.svs-flagline{font-size:11.5px}.svs-flagline.warn{color:var(--amber)}.svs-flagline.bad{color:var(--red)}
+.svs-heat-wrap{overflow-x:auto}
+.svs-heat{border-collapse:separate;border-spacing:2px;font-size:10px}
+.svs-heat th{font-weight:600;color:var(--slate);padding:2px 4px;white-space:nowrap;background:none;border:0;text-transform:none;letter-spacing:0}
+.svs-heat tbody th{text-align:right;font-size:11.5px;padding-right:8px}
+.svs-heat td{width:16px;min-width:16px;height:18px;border-radius:3px;padding:0;border:0}
+body.svs-on #mktFilters{display:none}
+/* run screen: numbered steps, check cards, folding file blocks, summary bar */
+.svs-runf{display:grid;gap:14px}
+.svs-step{display:flex;gap:12px;align-items:flex-start;margin:14px 0 0}
+.svs-stepn{flex:none;width:28px;height:28px;border-radius:50%;background:var(--cobalt);color:#fff;display:grid;place-items:center;font-weight:800;font-size:13px}
+.svs-step h3{margin:0;font-size:15px;color:var(--ink)}.svs-step p{margin:2px 0 0;font-size:12.5px;color:var(--slate)}
+.svs-ins{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px 18px}
+.svs-ins-wide{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.svs-in{display:grid;gap:5px;align-content:start;font-size:12px;font-weight:600;color:var(--ink)}
+.svs-in em{font-style:normal;font-weight:500;color:var(--slate)}
+.svs-in small{font-weight:400;color:var(--slate);font-size:11px;line-height:1.45}
+.svs-in input,.svs-in select{width:100%}
+.svs-inw{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:8px;background:#fff;overflow:hidden}
+.svs-inw:focus-within{outline:2px solid var(--cobalt-soft);border-color:var(--cobalt)}
+.svs .svs-inw input{border:0;border-radius:0;outline:0;flex:1;min-width:0;font-size:14px;font-weight:600}
+.svs-inw i{font-style:normal;display:grid;place-items:center;padding:0 10px;background:var(--paper);color:var(--slate);font-size:12px;font-weight:600}
+.svs-months{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.svs-chks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.svs-chk{padding:16px 18px;display:grid;gap:12px;align-content:start}
+.svs-chk-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.svs-chk-h h4{margin:0;font-size:14px;flex:1}
+.svs-chk-d{margin:0;font-size:12.5px;color:var(--slate);line-height:1.5}
+.svs-chk .svs-ins{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+.svs-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;background:var(--paper);color:var(--slate)}
+.svs-badge:empty{display:none}
+.svs-badge.ok{background:var(--green-soft);color:#0d6b44}.svs-badge.warn{background:var(--amber-soft);color:#8a5a03}
+.svs-badge.bad{background:var(--red-soft);color:var(--red)}.svs-badge.off{background:var(--paper);color:var(--slate)}
+.svs-cols{border-top:1px solid var(--line-2);padding-top:8px}
+.svs-cols>summary,.svs-fileblk>summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--cobalt);list-style-position:inside}
+.svs-mgrid{display:grid;gap:8px;margin-top:10px}
+.svs-mfile{font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--slate);margin-top:6px}
+.svs-mrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:12px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line-2)}
+.svs-mrow:last-child{border-bottom:0}
+.svs-mlab{font-size:12.5px;font-weight:600;color:var(--ink)}.svs-mlab small{display:block;font-weight:400;font-size:11px;color:var(--slate);line-height:1.4;margin-top:2px}
+.svs-mrow select{width:100%}
+.svs-files{display:grid;gap:10px}
+.svs-fileblk{padding:12px 16px}
+.svs-fileblk>summary{display:flex;align-items:center;gap:10px;color:var(--ink)}
+.svs-fileblk>summary::before{content:'▸';color:var(--slate);transition:transform .15s}.svs-fileblk[open]>summary::before{transform:rotate(90deg)}
+.svs-fileblk>summary::-webkit-details-marker{display:none}
+.svs-fname{font-weight:700;font-size:13px}.svs-fileblk .svs-badge{margin-left:auto}
+.svs-runbar{border-top:1px solid var(--line);margin-top:6px;justify-content:space-between}
+.svs-runsum{display:grid;gap:6px;font-size:12.5px;color:var(--ink);min-width:0}
+.svs-runsum .ok{color:#0d6b44;font-weight:600}.svs-runsum .bad{color:var(--red);font-weight:600}
+.svs-sep{margin:0 8px;color:var(--line)}
+@media (max-width:900px){.svs-chks{grid-template-columns:1fr}}
+@media (max-width:640px){.svs-mrow{grid-template-columns:1fr;gap:6px}.svs-runbar{flex-direction:column;align-items:stretch}}
+@media (max-width:900px){.svs-params{grid-template-columns:1fr 1fr}}
+@media (max-width:640px){.svs-params{grid-template-columns:1fr}.svs input[type=search]{width:100%}.svs-src>span{min-width:0;width:100%}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><div class="mark">R1</div><div><h1>ReconOne</h1><span>Marketplace Reconciliation</span></div></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="sidebar-foot"><div class="run"><span class="dot"></span> Last run · Today 06:00 IST</div><div>Period: Jun 2026 · Nimbus Retail</div></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" id="ham" aria-label="Menu">☰</button>
+      <div class="titles"><h2 id="pageTitle">Reconciliation Control Center</h2><p id="pageSub">Cross-module health across the reconciliation lifecycle</p></div>
+      <div class="spacer"></div>
+      <div class="filters" id="mktFilters"></div>
+      <div class="pill">📅 Jun 2026</div>
+    </header>
+    <main class="content" id="content"></main>
+  </div>
+</div>
+
+<!-- drill-through drawer -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="dh"><div><div class="dt" id="drTag">Exception</div><h3 id="drTitle">—</h3></div><button class="x" id="drClose">✕</button></div>
+  <div class="db" id="drBody"></div>
+  <div class="dactions" id="drActions"></div>
+</aside>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ DATA ============ */
+const MKT={Amazon:{c:'#ff9900'},Flipkart:{c:'#2874f0'},Myntra:{c:'#ff3e6c'},Nykaa:{c:'#e5308a'},Ajio:{c:'#2f2f6d'}};
+const fmtN=v=>v.toLocaleString('en-IN');
+const swatch=m=>`<span class="swatch" style="background:${MKT[m].c}"></span>`;
+
+function svg(i){return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${i}</svg>`}
+const IC={
+  grid:svg('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>'),
+  coins:svg('<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>'),
+  box:svg('<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>'),
+  bank:svg('<path d="M3 10l9-6 9 6"/><path d="M4 10v9M20 10v9M8 10v9M16 10v9M12 10v9"/><path d="M2 21h20"/>'),
+  shield:svg('<path d="M12 2l8 3v6c0 5-3.4 8.5-8 11-4.6-2.5-8-6-8-11V5l8-3z"/><path d="M9 12l2 2 4-4"/>'),
+  ret:svg('<path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 7"/>'),
+  recover:svg('<path d="M12 2v6l3-3M12 8L9 5"/><path d="M20 12a8 8 0 1 1-3.5-6.6"/><path d="M8 13l2.5 2.5L16 10"/>'),
+  match:svg('<path d="M4 7h7M4 12h7M4 17h7"/><path d="M14 9l3 3-3 3"/><path d="M20 12h-6"/>'),
+  bell:svg('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>'),
+  db:svg('<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>'),
+  doc:svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/>'),
+  audit:svg('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'),
+};
+
+const MODULES=[
+  {grp:'Overview',items:[{id:'home',name:'Control Center',icon:IC.grid}]},
+  {grp:'Reconciliation Modules',items:[
+    {id:'svs',name:'AR Reconciliations',icon:IC.bank,badge:'Live',badgeCls:'g'},
+    {id:'revenue',name:'Revenue Reconciliations',icon:IC.coins},
+    {id:'inventory',name:'Inventory Reconciliations',icon:IC.box},
+    {id:'validation',name:'Commission & Cost Validations',icon:IC.shield},
+    {id:'returns',name:'Product Return Tracking',icon:IC.ret},
+  ]},
+  {grp:'Operations & Governance',items:[
+    {id:'matchq',name:'Match Queue',icon:IC.match,badge:34},
+    {id:'alerts',name:'Alerts & Thresholds',icon:IC.bell,badge:6},
+  ]},
+];
+const NAMES={};MODULES.forEach(g=>g.items.forEach(m=>NAMES[m.id]=m.name));
+
+const MOD_SUMMARY=[
+  {id:'revenue',label:'Revenue',icon:IC.coins,color:'#1E5EFF',metric:'93.4%',mlab:'Reconciled revenue',pct:93.4,health:['Healthy','var(--green)','var(--green-soft)'],open:12},
+  {id:'inventory',label:'Inventory',icon:IC.box,color:'#0FA3A3',metric:'88.1%',mlab:'GRN match rate',pct:88.1,health:['Watch','var(--amber)','var(--amber-soft)'],open:8},
+  {id:'svs',label:'AR',icon:IC.bank,color:'#7b61ff',metric:'91.2%',mlab:'Collection efficiency',pct:91.2,health:['Watch','var(--amber)','var(--amber-soft)'],open:15},
+  {id:'validation',label:'Validations',icon:IC.shield,color:'#c47f04',metric:'₹9.2 L',mlab:'Financial leakage',pct:74,health:['Action','var(--red)','var(--red-soft)'],open:23},
+  {id:'returns',label:'Returns',icon:IC.ret,color:'#cc3340',metric:'6.4%',mlab:'Return rate',pct:82,health:['Watch','var(--amber)','var(--amber-soft)'],open:9},
+];
+
+/* ============ NAV / TOPBAR ============ */
+let active='home',charts=[];
+const nav=document.getElementById('nav');
+function buildNav(){
+  nav.innerHTML=MODULES.map(g=>`<div class="nav-label">${g.grp}</div>`+g.items.map(navBtn).join('')).join('');
+  nav.querySelectorAll('.nav-item').forEach(b=>b.onclick=()=>go(b.dataset.id));
+}
+function navBtn(m){const bd=m.badge?`<span class="badge ${m.badgeCls||''}">${m.badge}</span>`:'';return `<button class="nav-item ${m.id===active?'active':''}" data-id="${m.id}">${m.icon}<span>${m.name}</span>${bd}</button>`}
+
+const mf=document.getElementById('mktFilters');
+mf.innerHTML=`<span class="chip on" data-m="all">All brands</span>`+Object.keys(MKT).map(m=>`<span class="chip" data-m="${m}">${swatch(m)}${m}</span>`).join('');
+mf.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{mf.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));c.classList.add('on')});
+
+const SUBS={home:'Cross-module health across the reconciliation lifecycle',
+  svs:'Upload → map columns → reconcile one or two months → review, carry forward and export',
+  revenue:'Sales recorded in client systems vs marketplace & settlement records',
+  inventory:'Inventory movement between platform logistics and client records',
+  ar:'Settlement records vs actual collections received in bank accounts',
+  validation:'Marketplace deductions vs contractual agreements & expected calculations',
+  returns:'Full lifecycle of product returns from initiation to closure',
+  recovery:'Turn identified leakage into raised claims and recovered cash',
+  matchq:'Auto-matched, fuzzy and unmatched transactions awaiting review',
+  alerts:'Threshold breaches and ageing exceptions needing attention',
+  sources:'Ingestion health and freshness of every marketplace feed',
+  ratecard:'Contracted commission, logistics and fee slabs per marketplace',
+  audit:'Every change, with maker–checker approvals'};
+
+function go(id){
+  active=id;charts.forEach(c=>{try{c.destroy()}catch(e){}});charts=[];buildNav();
+  document.getElementById('pageTitle').textContent=id==='home'?'Reconciliation Control Center':NAMES[id];
+  document.getElementById('pageSub').textContent=SUBS[id];
+  document.getElementById('content').innerHTML=PAGES[id]();
+  requestAnimationFrame(()=>{(CHARTS[id]||function(){})();wireTrackers();});
+  window.scrollTo(0,0);document.getElementById('sidebar').classList.remove('open');closeDrawer();
+}
+
+/* ============ BUILDERS ============ */
+function kpi(cls,lab,val,sub){return `<div class="kcard ${cls}"><div class="accent"></div><div class="lab">${lab}</div><div class="val">${val}</div><div class="sub">${sub}</div></div>`}
+function sec(k,h){return `<div class="sec"><span class="k">${k}</span><h3>${h}</h3><div class="rule"></div></div>`}
+function panel(t,h,b){return `<div class="panel"><div class="ph"><h4>${t}</h4>${h?`<span class="hint">${h}</span>`:''}</div><div class="pb">${b}</div></div>`}
+function chartPanel(id,t,h,sm){return `<div class="panel"><div class="ph"><h4>${t}</h4>${h?`<span class="hint">${h}</span>`:''}</div><div class="pb"><div class="chart-wrap ${sm?'sm':''}"><canvas id="${id}"></canvas></div></div></div>`}
+function tbl(cols,rows){return `<div class="panel"><div class="tbl-wrap"><table><thead><tr>${cols.map(c=>`<th class="${c.r?'r':''}">${c.t}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div></div>`}
+const TAGMAP={Open:'t-open','In Progress':'t-prog',Closed:'t-closed','Under Review':'t-review',Recovered:'t-closed',Disputed:'t-open',Pending:'t-prog','Claim Raised':'t-purple',Submitted:'t-review',Acknowledged:'t-prog',Credited:'t-closed','Written Off':'t-open','Approved':'t-closed','Pending Approval':'t-prog'};
+function statusTag(s){return `<span class="tag ${TAGMAP[s]||'t-review'}">${s}</span>`}
+
+/* exception tracker with checkboxes + bulk bar + drill-through */
+let trackerSeq=0;
+function tracker(cols,rows,module){
+  const tid='trk'+(trackerSeq++);
+  window.__trk=window.__trk||{};window.__trk[tid]={cols,rows,module};
+  const head=`<th style="width:34px"><input type="checkbox" class="ck" data-all="${tid}"></th>`+cols.map(c=>`<th class="${c.r?'r':''}">${c.t}</th>`).join('');
+  const body=rows.map((r,i)=>{
+    const cells=cols.map((c,ci)=>{
+      let v=r.cells[ci];
+      return `<td class="${c.r?'r':''} ${c.cls&&c.cls(r.cells[ci])||''}">${v}</td>`;
+    }).join('');
+    return `<tr class="clickable" data-trk="${tid}" data-row="${i}"><td><input type="checkbox" class="ck" data-row-ck="${tid}" data-i="${i}" onclick="event.stopPropagation()"></td>${cells}</tr>`;
+  }).join('');
+  return `<div class="panel">
+    <div class="bulkbar">
+      <span class="selinfo" id="${tid}-info">0 selected</span>
+      <div class="spacer" style="flex:1"></div>
+      <button class="btn sm pri" onclick="bulkAct('${tid}','Raise claim')">Raise claim</button>
+      <button class="btn sm" onclick="bulkAct('${tid}','Assign owner')">Assign owner</button>
+      <button class="btn sm" onclick="bulkAct('${tid}','Add note')">Add note</button>
+      <button class="btn sm" onclick="bulkAct('${tid}','Export CSV')">⤓ Export CSV</button>
+    </div>
+    <div class="tbl-wrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+  </div>`;
+}
+function wireTrackers(){
+  document.querySelectorAll('[data-all]').forEach(a=>{
+    a.onclick=()=>{const tid=a.dataset.all;document.querySelectorAll(`[data-row-ck="${tid}"]`).forEach(c=>c.checked=a.checked);updSel(tid)};
+  });
+  document.querySelectorAll('[data-row-ck]').forEach(c=>c.addEventListener('change',()=>updSel(c.dataset.rowCk)));
+  document.querySelectorAll('tr[data-trk]').forEach(tr=>tr.onclick=()=>openException(tr.dataset.trk,+tr.dataset.row));
+}
+function updSel(tid){const n=[...document.querySelectorAll(`[data-row-ck="${tid}"]`)].filter(c=>c.checked).length;const el=document.getElementById(tid+'-info');if(el)el.textContent=n+' selected'}
+function bulkAct(tid,act){const n=[...document.querySelectorAll(`[data-row-ck="${tid}"]`)].filter(c=>c.checked).length;toast(n?`${act} · ${n} exception${n>1?'s':''}`:`Select rows first — then: ${act}`)}
+
+/* ============ DRAWER / DRILL-THROUGH ============ */
+function openException(tid,i){
+  const t=window.__trk[tid];const r=t.rows[i];const cols=t.cols;
+  const kv=cols.map((c,ci)=>`<div class="kv"><span class="kk">${c.t}</span><span class="vv">${stripTag(r.cells[ci])}</span></div>`).join('');
+  const body=`
+    ${kv}
+    <div class="dsec">Reconciliation trail</div>
+    <div class="tl">
+      ${(r.trail||defaultTrail).map(t=>`<div class="ti"><div class="tt">${t[0]}</div><div class="td">${t[1]}</div></div>`).join('')}
+    </div>
+    <div class="dsec">Root cause</div>
+    <p style="font-size:12.5px;color:var(--slate);margin:0">${r.cause||'Variance flagged by the rules engine during the last reconciliation run. Recommended action: raise a claim with the marketplace and attach supporting settlement evidence.'}</p>`;
+  showDrawer(t.module||'Exception', r.title||stripTag(r.cells[0]), body,[
+    ['Raise claim','pri'],['Assign owner',''],['Add note',''],['Close exception','']
+  ]);
+}
+const defaultTrail=[['Exception detected','Today 06:00 · auto-reconciliation run #4821'],['Matched against settlement file','Confidence 61% — below auto-match threshold'],['Queued for review','Assigned to module owner']];
+function showDrawer(tag,title,body,actions){
+  document.getElementById('drTag').textContent=tag;
+  document.getElementById('drTitle').textContent=title;
+  document.getElementById('drBody').innerHTML=body;
+  document.getElementById('drActions').innerHTML=actions.map(a=>`<button class="btn ${a[1]}" onclick="toast('${a[0]} · demo action');">${a[0]}</button>`).join('');
+  document.getElementById('drawer').classList.add('open');document.getElementById('scrim').classList.add('show');
+}
+function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('scrim').classList.remove('show')}
+function stripTag(s){return String(s).replace(/<[^>]+>/g,'').trim()}
+document.getElementById('drClose').onclick=closeDrawer;document.getElementById('scrim').onclick=closeDrawer;
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(window.__tt);window.__tt=setTimeout(()=>t.classList.remove('show'),2200)}
+
+/* ============ PAGES ============ */
+const PAGES={};
+
+PAGES.home=()=>`
+  <div class="page">
+    <div class="hero">
+      <div class="eyebrow">Period to date · Jun 2026 · Nimbus Retail</div>
+      <div class="lead">
+        <div><div class="big">₹9.2<small>L</small></div>
+          <div class="leak-lab">Total identified leakage across commissions, discounts, logistics & settlement variances — <b>₹3.8 L recovered</b>, ₹5.4 L in active pursuit.</div></div>
+        <div class="stat"><div class="n">₹4.82 Cr</div><div class="l">Gross marketplace sales</div></div>
+        <div class="stat"><div class="n">91.2%</div><div class="l">Overall reconciliation rate</div></div>
+        <div class="stat"><div class="n">67</div><div class="l">Open exceptions</div></div>
+        <div class="stat"><div class="n">41.3%</div><div class="l">Leakage recovered</div></div>
+      </div>
+    </div>
+    ${sec('Modules','Reconciliation health by process')}
+    <div class="modgrid">
+      ${MOD_SUMMARY.map(m=>`<button class="modcard" data-modcard="${m.id}" onclick="go('${m.id}')">
+        <div class="top"><div class="mi" style="background:${m.color}">${m.icon}</div><span class="health" style="background:${m.health[2]};color:${m.health[1]}">${m.health[0]}</span></div>
+        <div class="name">${m.label}</div><div><div class="metric">${m.metric}</div><div class="mlab">${m.mlab}</div></div>
+        <div class="bar"><i style="width:${m.pct}%;background:${m.color}"></i></div><div class="mlab">${m.open} open exceptions</div></button>`).join('')}
+    </div>
+    ${sec('Trends','Where the money moves')}
+    <div class="grid g2">${chartPanel('homeLeak','Financial leakage by category','₹ Lakh')}${chartPanel('homeRecon','Reconciliation rate — last 6 months','%')}</div>
+    ${sec('Attention','Top exceptions across all modules')}
+    ${tracker(
+      [{t:'Priority'},{t:'Module'},{t:'Reference'},{t:'Marketplace'},{t:'Impact',r:1,cls:v=>'neg'},{t:'Owner'},{t:'Status'}],
+      [
+        {cells:['🔴','Validations','CHG-88142',`<span class="mkt">${swatch('Amazon')}Amazon</span>`,'₹1.42 L','R. Khanna',statusTag('Open')],cause:'Commission charged at 14.7% vs contracted 14.0% slab for the electronics category.'},
+        {cells:['🔴','AR','STL-40921',`<span class="mkt">${swatch('Flipkart')}Flipkart</span>`,'₹1.18 L','A. Bisht',statusTag('In Progress')],cause:'Settlement posted by marketplace but no matching bank credit after 72 days.'},
+        {cells:['🟠','Revenue','ORD-77310',`<span class="mkt">${swatch('Myntra')}Myntra</span>`,'₹86,400','Naman',statusTag('Under Review')]},
+        {cells:['🟠','Returns','RET-20514',`<span class="mkt">${swatch('Nykaa')}Nykaa</span>`,'₹61,200','Priyanka',statusTag('Disputed')]},
+        {cells:['🟠','Inventory','ORD-91223',`<span class="mkt">${swatch('Ajio')}Ajio</span>`,'₹54,900','Supreet',statusTag('Open')]},
+      ],'Cross-module exception')}
+  </div>`;
+
+PAGES.revenue=()=>`
+  <div class="page">
+    ${sec('KPI Cards','Revenue reconciliation snapshot')}
+    <div class="kpis c4">
+      ${kpi('info','Gross Sales','₹4.82 Cr','<span class="trend up">▲ 8.2%</span> vs May')}
+      ${kpi('info','Net Sales','₹4.11 Cr','Net of returns & cancellations')}
+      ${kpi('good','Reconciled Revenue','93.4%','<span class="trend up">▲ 1.6 pts</span>')}
+      ${kpi('warn','Revenue Variance','₹18.6 L','Sales vs settlement gap')}
+    </div>
+    <div class="kpis c4" style="margin-top:14px">
+      ${kpi('info','Total Orders','1,42,308','Across 5 marketplaces')}
+      ${kpi('bad','Unreconciled Orders','1,204','0.85% of volume')}
+      ${kpi('warn','Short Settlements','₹6.9 L','412 orders under-settled')}
+      ${kpi('tealc','Excess Settlements','₹1.3 L','88 orders over-settled')}
+    </div>
+    ${sec('Analysis','Sales order & settlement reconciliation')}
+    <div class="grid g23">
+      ${chartPanel('revWaterfall','Revenue breakdown — gross to settled','₹ Cr')}
+      ${panel('Sales order reconciliation','OMS vs Marketplace',`
+        <div class="recon-flow"><div class="rf-node"><div class="rn">OMS Orders</div><div class="rv">1,42,308</div></div><div class="rf-arrow">⇄</div><div class="rf-node"><div class="rn">Marketplace</div><div class="rv">1,42,961</div></div></div>
+        <div style="margin-top:14px" class="tbl-wrap"><table><tbody>
+          <tr><td>Orders missing in OMS</td><td class="r neg">653</td></tr><tr><td>Orders missing in Marketplace</td><td class="r neg">218</td></tr>
+          <tr><td>Duplicate orders</td><td class="r neg">47</td></tr><tr><td>Order value mismatches</td><td class="r neg">286</td></tr>
+        </tbody></table></div>`)}
+    </div>
+    <div class="grid g2" style="margin-top:16px">${chartPanel('revTrend','Sales vs settlement trend','Daily · ₹ L')}${chartPanel('revMkt','Revenue variance by marketplace','₹ L')}</div>
+    ${sec('Exception Tracker','Open revenue exceptions')}
+    ${tracker(
+      [{t:'Order ID'},{t:'Marketplace'},{t:'Revenue Variance',r:1},{t:'Root Cause'},{t:'Owner'},{t:'Status'},{t:'Closure Ref'}],
+      [
+        {cells:['ORD-77310',`<span class="mkt">${swatch('Myntra')}Myntra</span>`,'<span class="neg">-₹86,400</span>','Settlement not received','Naman',statusTag('Under Review'),'—'],cause:'Order delivered and invoiced but no settlement line appears in the Myntra payout file for the cycle.'},
+        {cells:['ORD-44120',`<span class="mkt">${swatch('Amazon')}Amazon</span>`,'<span class="neg">-₹42,800</span>','Short settlement','R. Khanna',statusTag('In Progress'),'—']},
+        {cells:['ORD-90233',`<span class="mkt">${swatch('Flipkart')}Flipkart</span>`,'<span class="pos">+₹18,200</span>','Excess settlement','A. Bisht',statusTag('Open'),'—']},
+        {cells:['ORD-51877',`<span class="mkt">${swatch('Nykaa')}Nykaa</span>`,'<span class="neg">-₹31,500</span>','Order value mismatch','Naman',statusTag('Closed'),'<span class="mono">CR-2210</span>']},
+        {cells:['ORD-63944',`<span class="mkt">${swatch('Ajio')}Ajio</span>`,'<span class="neg">-₹27,900</span>','Missing in OMS','Supreet',statusTag('Open'),'—']},
+      ],'Revenue exception')}
+  </div>`;
+
+PAGES.inventory=()=>`
+  <div class="page">
+    ${sec('KPI Cards','Inventory movement snapshot')}
+    <div class="kpis c4">
+      ${kpi('info','Inventory Dispatched','88,420','Units to marketplace FCs')}
+      ${kpi('good','Inventory Delivered','86,910','98.3% delivery rate')}
+      ${kpi('warn','Inventory Returned','9,240','10.6% of delivered')}
+      ${kpi('tealc','Inventory Received (GRN)','8,610','93.2% GRN match')}
+    </div>
+    <div class="kpis c3" style="margin-top:14px">
+      ${kpi('bad','Inventory Variance Qty','1,510 units','Dispatch vs delivered + returned')}
+      ${kpi('bad','Inventory Variance Value','₹4.2 L','Unaccounted stock value')}
+      ${kpi('warn','Open Inventory Exceptions','8','2 aging > 30 days')}
+    </div>
+    ${sec('Analysis','Inventory movement funnel')}
+    <div class="grid g23">
+      ${panel('Inventory movement funnel','Dispatch → Delivery → Return → GRN',funnelHTML([['Dispatched',88420,'#1E5EFF'],['Delivered',86910,'#3f77ff'],['Returned',9240,'#0FA3A3'],['Received (GRN)',8610,'#c47f04']]))}
+      ${chartPanel('invSku','SKU-wise variance (top 6)','Units')}
+    </div>
+    <div class="grid g2" style="margin-top:16px">
+      ${panel('GRN validation','Return vs warehouse receipt',`<div class="tbl-wrap"><table><tbody>
+        <tr><td>Returned quantity</td><td class="r">9,240</td></tr><tr><td>Warehouse received quantity</td><td class="r">8,610</td></tr>
+        <tr><td>Pending receipt quantity</td><td class="r neg">630</td></tr><tr><td>Missing GRNs</td><td class="r neg">142</td></tr>
+        <tr><td>Quantity mismatch (GRN vs return)</td><td class="r neg">488</td></tr></tbody></table></div>`)}
+      ${chartPanel('invMkt','Marketplace-wise inventory variance','Units')}
+    </div>
+    ${sec('Exception Tracker','Open inventory exceptions')}
+    ${tracker(
+      [{t:'Order ID'},{t:'SKU'},{t:'Dispatch',r:1},{t:'Delivery',r:1},{t:'Return',r:1},{t:'GRN',r:1},{t:'Variance',r:1,cls:()=>'neg'},{t:'Type'},{t:'Status'}],
+      [
+        {cells:['ORD-91223','<span class="mono">SKU-AURA-04</span>',120,118,14,8,'-6','Missing GRN',statusTag('Open')],cause:'6 units returned by customer never scanned into the warehouse — GRN absent against the return manifest.'},
+        {cells:['ORD-88541','<span class="mono">SKU-LUME-11</span>',80,80,22,15,'-7','Qty mismatch',statusTag('In Progress')]},
+        {cells:['ORD-77102','<span class="mono">SKU-NOVA-27</span>',60,57,9,9,'-3','Delivery gap',statusTag('Under Review')]},
+        {cells:['ORD-65310','<span class="mono">SKU-AURA-09</span>',200,196,31,31,'-4','Pending receipt',statusTag('Open')]},
+      ],'Inventory exception')}
+  </div>`;
+
+PAGES.ar=()=>`
+  <div class="page">
+    ${sec('KPI Cards','Accounts receivable snapshot')}
+    <div class="kpis c3">${kpi('info','Total Receivable','₹3.88 Cr','Settlement due from marketplaces')}${kpi('good','Total Collected','₹3.54 Cr','Received in bank accounts')}${kpi('warn','Pending Collection','₹34.0 L','8.8% outstanding')}</div>
+    <div class="kpis c3" style="margin-top:14px">${kpi('good','Collection Efficiency','91.2%','<span class="trend up">▲ 2.1 pts</span>')}${kpi('bad','Overdue Receivables','₹12.6 L','Aged 60+ days')}${kpi('warn','Open Collection Exceptions','15','₹8.9 L at risk')}</div>
+    ${sec('Analysis','Settlement vs bank reconciliation')}
+    <div class="grid g2">${chartPanel('arAging','AR aging analysis','₹ L by bucket')}${chartPanel('arTrend','Settlement vs collection trend','Weekly · ₹ L')}</div>
+    <div class="grid g23" style="margin-top:16px">
+      ${chartPanel('arMkt','Collection performance by marketplace','% collected')}
+      ${panel('Reconciliation checks','Settlement ⇄ bank receipt',`<div class="tbl-wrap"><table><tbody>
+        <tr><td>Settlement without receipt</td><td class="r neg">₹9.4 L</td></tr><tr><td>Receipt without settlement</td><td class="r">₹2.1 L</td></tr>
+        <tr><td>Partial collections</td><td class="r neg">₹6.8 L</td></tr><tr><td>Excess collections</td><td class="r">₹1.2 L</td></tr></tbody></table></div>`)}
+    </div>
+    ${sec('Exception Tracker','Open collection exceptions')}
+    ${tracker(
+      [{t:'Settlement ID'},{t:'Bank Ref'},{t:'Settlement Amt',r:1},{t:'Received Amt',r:1},{t:'Variance',r:1},{t:'Aging'},{t:'Follow-up'},{t:'Status'}],
+      [
+        {cells:['<span class="mono">STL-40921</span>','—','₹1.18 L','₹0','<span class="neg">-₹1.18 L</span>','72 days','Escalated',statusTag('In Progress')],cause:'Settlement advice issued by Flipkart on cycle 22 but no matching NEFT credit traced in the bank statement.'},
+        {cells:['<span class="mono">STL-38210</span>','<span class="mono">TXN-99213</span>','₹2.40 L','₹1.86 L','<span class="neg">-₹54,000</span>','41 days','Emailed',statusTag('Open')]},
+        {cells:['<span class="mono">STL-35102</span>','<span class="mono">TXN-88410</span>','₹0.92 L','₹1.04 L','<span class="pos">+₹12,000</span>','12 days','Query raised',statusTag('Under Review')]},
+        {cells:['<span class="mono">STL-30044</span>','<span class="mono">TXN-77120</span>','₹1.60 L','₹1.60 L','₹0','—','—',statusTag('Closed')]},
+      ],'AR exception')}
+  </div>`;
+
+PAGES.validation=()=>`
+  <div class="page">
+    ${sec('KPI Cards','Deduction validation snapshot')}
+    <div class="kpis c4">${kpi('info','Total Commission Charged','₹52.4 L','Across all marketplaces')}${kpi('bad','Commission Variance','₹3.1 L','Charged vs contracted rate')}${kpi('info','Total Discounts Applied','₹38.9 L','Promotional + funded')}${kpi('warn','Discount Variance','₹2.4 L','Brand-funded excess')}</div>
+    <div class="kpis c4" style="margin-top:14px">${kpi('info','Logistics Charges','₹41.2 L','Forward + return')}${kpi('warn','Logistics Variance','₹1.9 L','Above expected slab')}${kpi('warn','Tax Variance','₹0.6 L','TCS/TDS mismatch')}${kpi('bad','Total Financial Leakage','₹9.2 L','<span class="trend up">▲ ₹1.1 L</span> vs May')}</div>
+    ${sec('Analysis','Where value leaks')}
+    <div class="grid g2">${chartPanel('valLeak','Leakage by charge type','₹ L')}${chartPanel('valTrend','Commission & discount variance trend','₹ L / month')}</div>
+    <div class="grid g23" style="margin-top:16px">
+      ${panel('Commission validation','Expected vs actual',`<div class="tbl-wrap"><table><thead><tr><th>Marketplace</th><th class="r">Expected</th><th class="r">Actual</th><th class="r">Rate Δ</th><th class="r">Amount Δ</th></tr></thead><tbody>
+        <tr><td><span class="mkt">${swatch('Amazon')}Amazon</span></td><td class="r">₹18.2 L</td><td class="r">₹19.4 L</td><td class="r neg">+0.7%</td><td class="r neg">₹1.20 L</td></tr>
+        <tr><td><span class="mkt">${swatch('Flipkart')}Flipkart</span></td><td class="r">₹14.1 L</td><td class="r">₹15.0 L</td><td class="r neg">+0.6%</td><td class="r neg">₹0.90 L</td></tr>
+        <tr><td><span class="mkt">${swatch('Myntra')}Myntra</span></td><td class="r">₹9.8 L</td><td class="r">₹10.3 L</td><td class="r neg">+0.5%</td><td class="r neg">₹0.50 L</td></tr>
+        <tr><td><span class="mkt">${swatch('Nykaa')}Nykaa</span></td><td class="r">₹6.1 L</td><td class="r">₹6.4 L</td><td class="r neg">+0.5%</td><td class="r neg">₹0.30 L</td></tr>
+        <tr><td><span class="mkt">${swatch('Ajio')}Ajio</span></td><td class="r">₹4.2 L</td><td class="r">₹4.4 L</td><td class="r neg">+0.5%</td><td class="r neg">₹0.20 L</td></tr></tbody></table></div>`)}
+      ${chartPanel('valHeat','Logistics cost by marketplace','Fwd vs return · ₹ L',1)}
+    </div>
+    ${sec('Exception Tracker','Recoverable leakage')}
+    ${tracker(
+      [{t:'Order ID'},{t:'Charge Type'},{t:'Expected',r:1},{t:'Actual',r:1},{t:'Variance',r:1},{t:'Reason'},{t:'Recovery'},{t:'Owner'}],
+      [
+        {cells:['CHG-88142','Commission','₹4,200','₹5,620','<span class="neg">-₹1,420</span>','Wrong rate slab',statusTag('Disputed'),'R. Khanna'],cause:'Charged at 14.7% against contracted 14.0% for category "Home & Kitchen". Rate-card master confirms the discrepancy.'},
+        {cells:['CHG-84021','Discount','₹8,000','₹9,900','<span class="neg">-₹1,900</span>','Brand-funded excess',statusTag('Recovered'),'Naman']},
+        {cells:['CHG-80119','Return logistics','₹1,100','₹1,760','<span class="neg">-₹660</span>','Weight mismatch',statusTag('Open'),'A. Bisht']},
+        {cells:['CHG-77540','Platform fee','₹2,400','₹2,400','₹0','Validated',statusTag('Closed'),'Supreet']},
+      ],'Validation exception')}
+  </div>`;
+
+PAGES.returns=()=>`
+  <div class="page">
+    ${sec('KPI Cards','Return lifecycle snapshot')}
+    <div class="kpis c4">${kpi('info','Total Returns','9,240','Units initiated')}${kpi('warn','Return Value','₹71.0 L','14.7% of net sales')}${kpi('warn','Return Rate','6.4%','<span class="trend down">▼ 0.4 pts</span>')}${kpi('info','Pending Returns','1,180','In transit / processing')}</div>
+    <div class="kpis c3" style="margin-top:14px">${kpi('bad','Disputed Returns','214','₹6.1 L under dispute')}${kpi('bad','SLA Breaches','96','Refund / pickup aging')}${kpi('tealc','Avg Return Cycle Time','11.4 days','Request → closure')}</div>
+    ${sec('Return Journey Tracker','Delivered → closed lifecycle')}
+    ${panel('','',journeyHTML())}
+    ${sec('Analysis','Return funnel & aging')}
+    <div class="grid g23">
+      ${panel('Return funnel','Volume by stage',funnelHTML([['Requested',9240,'#cc3340'],['Approved',8720,'#d8515c'],['Picked up',7980,'#0FA3A3'],['QC passed',7410,'#3f77ff'],['Refunded',7196,'#159a63']]))}
+      ${chartPanel('retAging','Return aging by stage','Days outstanding')}
+    </div>
+    <div class="grid g2" style="margin-top:16px">${chartPanel('retMkt','Return rate by marketplace','%')}${chartPanel('retSku','SKU return trend (top 5)','Units returned')}</div>
+    ${sec('Exception Tracker','Flagged returns')}
+    ${tracker(
+      [{t:'Return ID'},{t:'Order ID'},{t:'Marketplace'},{t:'Flags'},{t:'Current Stage'},{t:'Owner'},{t:'Resolution'}],
+      [
+        {cells:['<span class="mono">RET-20514</span>','<span class="mono">ORD-70112</span>',`<span class="mkt">${swatch('Nykaa')}Nykaa</span>`,'SLA · Dispute','Warehouse Receipt','Priyanka',statusTag('Disputed')],cause:'Return picked up 9 days ago, not yet received at warehouse — SLA breached and customer has raised a refund dispute.'},
+        {cells:['<span class="mono">RET-19980</span>','<span class="mono">ORD-68420</span>',`<span class="mkt">${swatch('Amazon')}Amazon</span>`,'Amount mismatch','Refund / Adjustment','Naman',statusTag('In Progress')]},
+        {cells:['<span class="mono">RET-18770</span>','<span class="mono">ORD-66031</span>',`<span class="mkt">${swatch('Myntra')}Myntra</span>`,'SKU mismatch','Quality Check','A. Bisht',statusTag('Under Review')]},
+        {cells:['<span class="mono">RET-17650</span>','<span class="mono">ORD-64410</span>',`<span class="mkt">${swatch('Flipkart')}Flipkart</span>`,'SLA breach','Pickup Scheduled','Supreet',statusTag('Open')]},
+        {cells:['<span class="mono">RET-16220</span>','<span class="mono">ORD-61200</span>',`<span class="mkt">${swatch('Ajio')}Ajio</span>`,'—','Closed','Priyanka',statusTag('Closed')]},
+      ],'Return exception')}
+  </div>`;
+
+/* ---------- NEW: RECOVERY WORKSPACE ---------- */
+PAGES.recovery=()=>{
+  const cols=[['Identified','#5b6b82',4],['Claim Raised','#7b61ff',5],['Submitted','#1E5EFF',6],['Acknowledged','#c47f04',4],['Credited','#159a63',7]];
+  const claims={
+    'Identified':[['LK-4412','₹1.42 L','Amazon','Commission'],['LK-4409','₹66,000','Nykaa','Return logistics'],['LK-4405','₹54,900','Ajio','Inventory'],['LK-4401','₹31,500','Nykaa','Revenue']],
+    'Claim Raised':[['LK-4388','₹1.18 L','Flipkart','AR'],['LK-4382','₹86,400','Myntra','Revenue'],['LK-4377','₹42,800','Amazon','Revenue']],
+    'Submitted':[['LK-4361','₹1.90 L','Amazon','Discount'],['LK-4355','₹72,000','Flipkart','Commission'],['LK-4349','₹38,000','Myntra','Logistics']],
+    'Acknowledged':[['LK-4320','₹1.10 L','Amazon','Commission'],['LK-4311','₹49,000','Nykaa','Discount']],
+    'Credited':[['LK-4288','₹1.90 L','Amazon','Discount'],['LK-4275','₹88,000','Flipkart','Commission'],['LK-4260','₹61,000','Myntra','Logistics']],
+  };
+  const board=`<div class="board">${cols.map(c=>`
+    <div class="bcol"><div class="bh"><span>${c[0]}</span><span class="cnt">${c[2]}</span></div>
+      ${(claims[c[0]]||[]).map(cl=>`<div class="claim" onclick="openClaim('${cl[0]}','${cl[1]}','${cl[2]}','${cl[3]}','${c[0]}')">
+        <div class="cid mono">${cl[0]}</div><div class="camt">${cl[1]}</div>
+        <div class="cmeta"><span class="mkt">${swatch(cl[2])}${cl[2]}</span><span>${cl[3]}</span></div>
+        <div class="cbar"><i style="display:block;height:100%;width:${20+cols.findIndex(x=>x[0]===c[0])*20}%;background:${c[1]}"></i></div>
+      </div>`).join('')}
+    </div>`).join('')}</div>`;
+  return `<div class="page">
+    ${sec('KPI Cards','Recovery pipeline snapshot')}
+    <div class="kpis c5">
+      ${kpi('warn','Identified Leakage','₹9.2 L','67 claims tagged')}
+      ${kpi('purp','In Active Pursuit','₹5.4 L','claims raised → submitted')}
+      ${kpi('good','Recovered to Date','₹3.8 L','credited by marketplaces')}
+      ${kpi('good','Recovery Rate','41.3%','<span class="trend up">▲ 6 pts</span> QoQ')}
+      ${kpi('bad','Written Off','₹0.6 L','out of dispute window')}
+    </div>
+    ${sec('Pipeline','Claim workflow — identified to credited')}
+    ${board}
+    ${sec('Trends','Recovery velocity & root cause')}
+    <div class="grid g2">${chartPanel('recTrend','Identified vs recovered — 6 months','₹ L')}${chartPanel('recPareto','Leakage by root cause (Pareto)','₹ L · cumulative %')}</div>
+    <div class="note"><span>💡</span><div><b>Recovery Workspace</b> is where detection becomes cash. Every exception flagged in the five modules can be promoted to a claim, tracked through the marketplace dispute cycle, and reported as ₹ actually recovered vs identified — the ROI story for the engagement.</div></div>
+  </div>`;
+};
+function openClaim(id,amt,mkt,type,stage){
+  const body=`
+    <div class="kv"><span class="kk">Claim ID</span><span class="vv mono">${id}</span></div>
+    <div class="kv"><span class="kk">Amount at stake</span><span class="vv">${amt}</span></div>
+    <div class="kv"><span class="kk">Marketplace</span><span class="vv">${mkt}</span></div>
+    <div class="kv"><span class="kk">Leakage type</span><span class="vv">${type}</span></div>
+    <div class="kv"><span class="kk">Current stage</span><span class="vv">${statusTag(stage)}</span></div>
+    <div class="dsec">Claim lifecycle</div>
+    <div class="tl">
+      <div class="ti"><div class="tt">Identified</div><div class="td">Auto-tagged from ${type} validation · variance confirmed</div></div>
+      <div class="ti"><div class="tt">Claim raised</div><div class="td">Dispute ticket created with ${mkt} seller support</div></div>
+      <div class="ti"><div class="tt">Submitted</div><div class="td">Evidence pack attached · awaiting marketplace review</div></div>
+      <div class="ti"><div class="tt">Acknowledged / Credited</div><div class="td">Marketplace response tracked against SLA</div></div>
+    </div>`;
+  showDrawer('Recovery claim',id,body,[['Advance stage','pri'],['Attach evidence',''],['Mark written off',''],['Add note','']]);
+}
+
+/* ---------- NEW: MATCH QUEUE ---------- */
+PAGES.matchq=()=>{
+  const rows=[
+    ['STL-40992','ORD-77310','₹12,480','₹12,480','Amount + date match','88','#159a63'],
+    ['STL-40988','ORD-77291','₹8,900','₹8,930','Amount ~ (±0.3%)','71','#c47f04'],
+    ['STL-40971','ORD-77140','₹15,200','₹15,200','Ref pattern match','64','#c47f04'],
+    ['STL-40960','ORD-76980','₹6,400','₹9,100','Weak — amount gap','38','#cc3340'],
+    ['STL-40944','ORD-76820','₹22,000','₹22,000','Exact ID + amount','93','#159a63'],
+  ];
+  return `<div class="page">
+    ${sec('KPI Cards','Auto-reconciliation performance')}
+    <div class="kpis c4">
+      ${kpi('good','Auto-Matched','96.1%','1,36,750 of 1,42,308')}
+      ${kpi('warn','Fuzzy / Needs Review','2.4%','3,412 candidate pairs')}
+      ${kpi('bad','Unmatched','1.5%','2,146 unresolved')}
+      ${kpi('tealc','Avg Match Confidence','91.4%','on auto-cleared items')}
+    </div>
+    ${sec('Match Queue','Fuzzy matches awaiting a human decision')}
+    <div class="panel"><div class="bulkbar"><span class="selinfo">Match rules: amount ±1% · date ±3d · order-ref fuzzy</span><div style="flex:1"></div>
+      <button class="btn sm pri" onclick="toast('Accepted all high-confidence matches (demo)')">Accept ≥ 85%</button>
+      <button class="btn sm" onclick="toast('Exported queue (demo)')">⤓ Export</button></div>
+      <div class="tbl-wrap"><table><thead><tr><th>Settlement</th><th>Candidate Order</th><th class="r">Settle Amt</th><th class="r">Order Amt</th><th>Signal</th><th>Confidence</th><th>Action</th></tr></thead><tbody>
+      ${rows.map(r=>`<tr><td class="mono">${r[0]}</td><td class="mono">${r[1]}</td><td class="r">${r[2]}</td><td class="r">${r[3]}</td><td>${r[4]}</td>
+        <td><div class="conf"><div class="mtr"><i style="width:${r[5]}%;background:${r[6]}"></i></div><b style="color:${r[6]}">${r[5]}%</b></div></td>
+        <td><button class="btn sm pri" onclick="toast('Matched ${r[0]} ↔ ${r[1]}')">Match</button> <button class="btn sm" onclick="toast('Rejected ${r[0]}')">Reject</button></td></tr>`).join('')}
+      </tbody></table></div></div>
+    <div class="note"><span>💡</span><div>The engine clears the ~96% that match cleanly on amount, date and reference. Only the ambiguous tail lands here with a <b>confidence score</b> and the signal that fired — so analysts spend time only where judgement is needed.</div></div>
+  </div>`;
+};
+
+/* ---------- NEW: ALERTS ---------- */
+PAGES.alerts=()=>`
+  <div class="page">
+    ${sec('Active Alerts','Threshold breaches & ageing exceptions')}
+    ${[
+      ['hi','🚨','Financial leakage crossed ₹9 L','Validations module · Jun leakage at ₹9.2 L, threshold ₹9.0 L','2h ago'],
+      ['hi','⏰','Settlement STL-40921 aged past 60 days','AR module · ₹1.18 L outstanding, no bank credit traced','5h ago'],
+      ['md','📉','Amazon commission variance up 0.7%','Above the 0.5% tolerance on Home & Kitchen category','Today'],
+      ['md','↩️','Return SLA breaches exceeded 90','96 returns breaching pickup/refund SLA this cycle','Today'],
+      ['md','📦','Ajio inventory variance > 400 units','Dispatch vs delivered+returned gap widening','Yesterday'],
+      ['lo','🔁','Nykaa payout file delayed','Expected 06:00, not received — reconciliation ran on stale data','Yesterday'],
+    ].map(a=>`<div class="alert"><div class="sev ${a[0]}">${a[1]}</div><div class="amsg"><div class="at">${a[2]}</div><div class="ad">${a[3]}</div></div><div class="atime">${a[4]}</div><button class="btn sm" onclick="toast('Acknowledged')">Ack</button></div>`).join('')}
+    ${sec('Threshold Rules','What triggers an alert')}
+    ${tbl([{t:'Rule'},{t:'Scope'},{t:'Condition'},{t:'Channel'},{t:'Status'}],[
+      ['Leakage ceiling','Validations','Monthly leakage > ₹9.0 L','Email + In-app',statusTag('Open')],
+      ['Settlement ageing','AR','Unmatched settlement > 60 days','Email',statusTag('Open')],
+      ['Commission tolerance','Validations','Rate Δ > 0.5% vs rate-card','In-app',statusTag('Open')],
+      ['Return SLA','Returns','SLA breaches > 90 / cycle','Email',statusTag('Open')],
+      ['Feed freshness','Data Sources','File not received by 07:00','Slack + Email',statusTag('Open')],
+    ].map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td></tr>`).join(''))}
+  </div>`;
+
+/* ---------- NEW: DATA SOURCES ---------- */
+PAGES.sources=()=>{
+  const fresh=(s)=>({ok:['#159a63','var(--green-soft)','Fresh'],stale:['#c47f04','var(--amber-soft)','Delayed'],fail:['#cc3340','var(--red-soft)','Failed']}[s]);
+  const rows=[
+    ['Amazon','Settlement report','Today 06:02','142,961','0','ok'],
+    ['Flipkart','Payout file','Today 06:05','98,204','12','ok'],
+    ['Myntra','Sales + returns','Today 06:01','61,880','0','ok'],
+    ['Nykaa','Payout file','Yesterday 22:40','—','—','stale'],
+    ['Ajio','Settlement report','Today 05:58','44,120','340','ok'],
+    ['Client OMS','Order master','Today 05:45','142,308','0','ok'],
+    ['Bank statement','MT940 feed','Today 06:10','3,402','0','ok'],
+  ];
+  return `<div class="page">
+    ${sec('KPI Cards','Ingestion health')}
+    <div class="kpis c4">
+      ${kpi('good','Feeds Healthy','6 of 7','last 24h')}
+      ${kpi('warn','Feeds Delayed','1','Nykaa payout')}
+      ${kpi('info','Rows Ingested','4,93,875','this run')}
+      ${kpi('warn','Parse Failures','352','0.07% of rows')}
+    </div>
+    ${sec('Source Feeds','Freshness, volume & parse quality')}
+    ${tbl([{t:'Source'},{t:'Feed'},{t:'Last Received'},{t:'Rows',r:1},{t:'Parse Failures',r:1},{t:'Freshness'}],
+      rows.map(r=>{const f=fresh(r[5]);return `<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td class="r">${r[3]}</td><td class="r ${r[4]!=='0'&&r[4]!=='—'?'neg':''}">${r[4]}</td><td><span class="freshbadge" style="background:${f[1]};color:${f[0]}">● ${f[2]}</span></td></tr>`}).join(''))}
+    <div class="note"><span>💡</span><div>Auditors trust output only if they trust the inputs. This panel proves <b>every marketplace file landed, how many rows loaded, and what failed to parse</b> — the delayed Nykaa feed is exactly why the AR numbers upstream carry a "ran on stale data" caveat.</div></div>
+  </div>`;
+};
+
+/* ---------- NEW: RATE-CARD MASTER ---------- */
+PAGES.ratecard=()=>`
+  <div class="page">
+    ${sec('Commission Slabs','Contracted rate by marketplace & category')}
+    ${tbl([{t:'Marketplace'},{t:'Category'},{t:'Contracted Rate',r:1},{t:'Effective From'},{t:'Source Doc'}],[
+      ['Amazon','Home & Kitchen','14.0%','01 Apr 2026','Agreement v3.2'],
+      ['Amazon','Beauty','18.0%','01 Apr 2026','Agreement v3.2'],
+      ['Flipkart','Apparel','22.0%','15 Mar 2026','Seller contract'],
+      ['Myntra','Apparel','24.5%','01 Jan 2026','Brand MoU'],
+      ['Nykaa','Beauty','19.0%','01 Feb 2026','Vendor terms'],
+      ['Ajio','Apparel','21.0%','01 Apr 2026','Seller contract'],
+    ].map(r=>`<tr><td><span class="mkt">${swatch(r[0])}${r[0]}</span></td><td>${r[1]}</td><td class="r"><b>${r[2]}</b></td><td>${r[3]}</td><td class="mono">${r[4]}</td></tr>`).join(''))}
+    ${sec('Logistics & Fee Slabs','Expected charge by weight / type')}
+    ${tbl([{t:'Marketplace'},{t:'Charge Type'},{t:'Slab'},{t:'Expected Fee',r:1}],[
+      ['Amazon','Forward shipping','0–500 g','₹42'],
+      ['Amazon','Return shipping','0–500 g','₹58'],
+      ['Flipkart','Forward shipping','500 g–1 kg','₹66'],
+      ['Myntra','Fixed fee','Per order','₹35'],
+      ['Nykaa','Collection fee','Per order','₹28'],
+    ].map(r=>`<tr><td><span class="mkt">${swatch(r[0])}${r[0]}</span></td><td>${r[1]}</td><td>${r[2]}</td><td class="r"><b>${r[3]}</b></td></tr>`).join(''))}
+    <div class="note"><span>💡</span><div>Every "Expected" figure in the validation module reads from this master. When Amazon charges 14.7% against the <b>14.0% row above</b>, that's the exact comparison that surfaces the ₹1.42 L commission exception — no hardcoded assumptions.</div></div>
+  </div>`;
+
+/* ---------- NEW: AUDIT TRAIL ---------- */
+PAGES.audit=()=>`
+  <div class="page">
+    ${sec('Pending Approvals','Maker–checker queue')}
+    ${tbl([{t:'Change'},{t:'Reference'},{t:'Maker'},{t:'Value'},{t:'Requested'},{t:'Status'}],[
+      ['Write off exception','CHG-79001','A. Bisht','₹18,400','1h ago',statusTag('Pending Approval')],
+      ['Override match','STL-40960 ↔ ORD-76980','Naman','₹6,400','3h ago',statusTag('Pending Approval')],
+      ['Edit rate-card','Amazon · Beauty 18%→17.5%','Supreet','—','Today',statusTag('Pending Approval')],
+      ['Bulk close','5 revenue exceptions','Priyanka','₹1.9 L','Today',statusTag('Pending Approval')],
+    ].map(r=>`<tr><td><b>${r[0]}</b></td><td class="mono">${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td></tr>`).join(''))}
+    ${sec('Change Log','Immutable record of every action')}
+    ${tbl([{t:'Timestamp'},{t:'Actor'},{t:'Action'},{t:'Object'},{t:'Checker'},{t:'Result'}],[
+      ['Today 09:41','Naman','Raised claim','LK-4388 · ₹1.18 L','J. Singh',statusTag('Approved')],
+      ['Today 09:12','R. Khanna','Disputed charge','CHG-88142','J. Singh',statusTag('Approved')],
+      ['Today 08:50','April','Deployed rule','Feed freshness alert','—',statusTag('Approved')],
+      ['Yesterday','Supreet','Recovered','LK-4288 · ₹1.90 L','J. Singh',statusTag('Approved')],
+      ['Yesterday','Naman','Edited rate-card','Flipkart Apparel 22%','J. Singh',statusTag('Approved')],
+    ].map(r=>`<tr><td class="mono">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td class="mono">${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td></tr>`).join(''))}
+    <div class="note"><span>💡</span><div>Nothing changes silently. Write-offs, match overrides and rate-card edits all route through a <b>second approver</b>, and every action lands in an immutable log — the control an internal-audit client will ask for first.</div></div>
+  </div>`;
+
+/* ---------- funnel / journey ---------- */
+function funnelHTML(steps){const max=steps[0][1];return `<div class="funnel">${steps.map((s,i)=>{const w=Math.max(28,(s[1]/max)*100);const drop=i>0?(((steps[i-1][1]-s[1])/steps[i-1][1])*100).toFixed(1):null;return `<div class="fstep"><div class="fbar" style="width:${w}%;background:${s[2]}">${s[0]}</div><div class="fmeta"><b>${fmtN(s[1])}</b> ${drop?`<span class="drop"> ▼ ${drop}%</span>`:''}</div></div>`}).join('')}</div>`}
+function journeyHTML(){
+  const steps=[['Delivered',9240],['Return\nRequested',9240],['Approved',8720],['Pickup\nScheduled',8210],['Pickup\nCompleted',7980],['Warehouse\nReceipt',7710],['Quality\nCheck',7410],['Refund /\nAdjust',7196],['Settlement\nAdjust',7040],['Closed',6980]];
+  const cols=['#0FA3A3','#0FA3A3','#0FA3A3','#3f77ff','#3f77ff','#c47f04','#c47f04','#159a63','#159a63','#5b6b82'];
+  return `<div class="journey">${steps.map((s,i)=>`<div class="jstep ${i<9?'done':''}"><div class="jc" style="background:${cols[i]}">${i+1}</div><div class="jl">${s[0].replace('\n','<br>')}</div><div class="jn">${fmtN(s[1])}</div></div>`).join('')}</div>
+    <div class="legend"><span><i style="background:#0FA3A3"></i>Initiation</span><span><i style="background:#3f77ff"></i>Logistics</span><span><i style="background:#c47f04"></i>Processing</span><span><i style="background:#159a63"></i>Financial</span><span><i style="background:#5b6b82"></i>Closed</span></div>`}
+
+/* ============ CHARTS ============ */
+Chart.defaults.font.family="'Inter',sans-serif";Chart.defaults.font.size=11.5;Chart.defaults.color='#5b6b82';
+const AX={grid:{color:'#eef1f6'},border:{display:false}},NOG={grid:{display:false},border:{display:false}};
+function mk(id,cfg){const el=document.getElementById(id);if(!el)return;charts.push(new Chart(el,cfg))}
+const mcolors=Object.values(MKT).map(m=>m.c);
+function baropt(u){return {plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y+' '+u}}},scales:{x:NOG,y:AX}}}
+function lineopt(min,max,u,lg){return {interaction:{mode:'index',intersect:false},plugins:{legend:{display:!!lg,position:'bottom',labels:{boxWidth:12,boxHeight:2,padding:14}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.y+' '+u}}},scales:{x:NOG,y:{...AX,min,max}}}}
+function days(n){return Array.from({length:n},(_,i)=>i+1)}
+function trend(n,base,amp){let v=base;return Array.from({length:n},()=>{v+=(Math.random()-.48)*amp;return Math.max(0,Math.round(v))})}
+
+/* Control Center: replace the AR tile's placeholder stats with the latest live run.
+   Silently keeps the static values if the backend is unreachable or no run exists yet. */
+async function patchArTile(){
+  const card=document.querySelector('.modcard[data-modcard="svs"]');
+  if(!card)return;
+  let runs;try{runs=await api('/api/runs')}catch(e){return}
+  const done=(runs||[]).filter(r=>r.status==='DONE');
+  if(!done.length)return;
+  const r=done[0];
+  const comp=(r.matched||0)+(r.unmatched||0);
+  const rate=comp?Math.round(1000*r.matched/comp)/10:0;
+  const h=rate>=95?['Healthy','var(--green)','var(--green-soft)']:rate>=85?['Watch','var(--amber)','var(--amber-soft)']:['Action','var(--red)','var(--red-soft)'];
+  const hb=card.querySelector('.health');if(hb){hb.textContent=h[0];hb.style.background=h[2];hb.style.color=h[1];}
+  const met=card.querySelector('.metric');if(met)met.textContent=rate+'%';
+  const ml=met&&met.nextElementSibling;if(ml)ml.textContent='Match rate'+(r.period?' · '+r.period:'');
+  const bar=card.querySelector('.bar i');if(bar)bar.style.width=rate+'%';
+  const mls=card.querySelectorAll('.mlab');const open=mls[mls.length-1];
+  if(open)open.textContent=num(r.exception_count||0)+' open exceptions';
+}
+
+const CHARTS={
+  home(){
+    mk('homeLeak',{type:'bar',data:{labels:['Commission','Discount','Fwd Logistics','Return Logistics','Tax','Settlement'],datasets:[{data:[3.1,2.4,1.1,0.8,0.6,1.2],backgroundColor:'#1E5EFF',borderRadius:6,barThickness:26}]},options:baropt('₹ L')});
+    mk('homeRecon',{type:'line',data:{labels:['Jan','Feb','Mar','Apr','May','Jun'],datasets:[{data:[86.2,87.9,88.4,89.8,90.6,91.2],borderColor:'#0FA3A3',backgroundColor:'transparent',fill:false,tension:.4,pointRadius:3,pointBackgroundColor:'#0FA3A3',borderWidth:2.5}]},options:lineopt(80,95,'%')});
+    patchArTile();
+  },
+  revenue(){
+    mk('revWaterfall',{type:'bar',data:{labels:['Gross','Returns','Cancels','Commission','Logistics','Settled'],datasets:[{data:[4.82,0.71,0.16,0.40,0.23,3.32],backgroundColor:['#1E5EFF','#cc3340','#cc3340','#c47f04','#c47f04','#159a63'],borderRadius:5,barThickness:34}]},options:{...baropt('₹ Cr'),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₹'+c.parsed.y.toFixed(2)+' Cr'}}}}});
+    mk('revTrend',{type:'line',data:{labels:days(30),datasets:[{label:'Sales',data:trend(30,120,18),borderColor:'#1E5EFF',tension:.35,pointRadius:0,borderWidth:2},{label:'Settlement',data:trend(30,108,20),borderColor:'#0FA3A3',tension:.35,pointRadius:0,borderWidth:2,borderDash:[5,4]}]},options:lineopt(60,180,'₹ L',true)});
+    mk('revMkt',{type:'bar',data:{labels:Object.keys(MKT),datasets:[{data:[7.2,5.1,3.4,1.8,1.1],backgroundColor:mcolors,borderRadius:6,barThickness:30}]},options:baropt('₹ L')});
+  },
+  inventory(){
+    mk('invSku',{type:'bar',data:{labels:['AURA-04','LUME-11','NOVA-27','AURA-09','ZEST-03','LUME-08'],datasets:[{data:[6,7,3,4,2,5],backgroundColor:'#0FA3A3',borderRadius:6,barThickness:26}]},options:baropt('Units')});
+    mk('invMkt',{type:'bar',data:{labels:Object.keys(MKT),datasets:[{data:[480,360,290,210,170],backgroundColor:mcolors,borderRadius:6,barThickness:30}]},options:baropt('Units')});
+  },
+  ar(){
+    mk('arAging',{type:'bar',data:{labels:['0–30 days','31–60 days','61–90 days','90+ days'],datasets:[{data:[14.2,7.2,6.8,5.8],backgroundColor:['#159a63','#c47f04','#e5308a','#cc3340'],borderRadius:6,barThickness:38}]},options:baropt('₹ L')});
+    mk('arTrend',{type:'line',data:{labels:['W1','W2','W3','W4'],datasets:[{label:'Settled',data:[92,98,101,96],borderColor:'#1E5EFF',tension:.4,pointRadius:3,borderWidth:2.5},{label:'Collected',data:[80,90,94,90],borderColor:'#159a63',tension:.4,pointRadius:3,borderWidth:2.5}]},options:lineopt(60,120,'₹ L',true)});
+    mk('arMkt',{type:'bar',data:{labels:Object.keys(MKT),datasets:[{data:[94,91,90,88,85],backgroundColor:mcolors,borderRadius:6,barThickness:30}]},options:{...baropt('%'),scales:{x:NOG,y:{...AX,min:70,max:100}}}});
+  },
+  validation(){
+    mk('valLeak',{type:'doughnut',data:{labels:['Commission','Discount','Fwd Logistics','Return Logistics','Tax'],datasets:[{data:[3.1,2.4,1.1,0.8,0.6],backgroundColor:['#1E5EFF','#0FA3A3','#c47f04','#e5308a','#7b61ff'],borderWidth:2,borderColor:'#fff'}]},options:{plugins:{legend:{position:'right',labels:{boxWidth:10,boxHeight:10,padding:12}}},cutout:'62%'}});
+    mk('valTrend',{type:'line',data:{labels:['Jan','Feb','Mar','Apr','May','Jun'],datasets:[{label:'Commission',data:[2.1,2.4,2.6,2.8,2.9,3.1],borderColor:'#1E5EFF',tension:.4,pointRadius:2,borderWidth:2.5},{label:'Discount',data:[1.4,1.7,1.9,2.0,2.2,2.4],borderColor:'#0FA3A3',tension:.4,pointRadius:2,borderWidth:2.5}]},options:lineopt(0,4,'₹ L',true)});
+    mk('valHeat',{type:'bar',data:{labels:Object.keys(MKT),datasets:[{label:'Forward',data:[9.1,7.2,5.1,3.4,2.4],backgroundColor:'#1E5EFF',borderRadius:5,barThickness:16,stack:'a'},{label:'Return',data:[3.2,2.6,1.9,1.1,0.8],backgroundColor:'#c47f04',borderRadius:5,barThickness:16,stack:'a'}]},options:{...baropt('₹ L'),plugins:{legend:{display:true,position:'bottom'}},scales:{x:{...NOG,stacked:true},y:{...AX,stacked:true}}}});
+  },
+  returns(){
+    mk('retAging',{type:'bar',data:{labels:['Pickup','WH Receipt','QC','Refund','Stl Adjust'],datasets:[{data:[3.2,4.1,2.8,5.6,4.9],backgroundColor:'#cc3340',borderRadius:6,barThickness:30}]},options:baropt('Avg days')});
+    mk('retMkt',{type:'bar',data:{labels:Object.keys(MKT),datasets:[{data:[5.1,6.0,9.2,7.4,5.8],backgroundColor:mcolors,borderRadius:6,barThickness:30}]},options:baropt('%')});
+    mk('retSku',{type:'line',data:{labels:days(12),datasets:[{label:'AURA-04',data:trend(12,42,10),borderColor:'#1E5EFF',tension:.4,pointRadius:0,borderWidth:2},{label:'LUME-11',data:trend(12,36,9),borderColor:'#0FA3A3',tension:.4,pointRadius:0,borderWidth:2},{label:'NOVA-27',data:trend(12,30,8),borderColor:'#e5308a',tension:.4,pointRadius:0,borderWidth:2}]},options:lineopt(0,70,'Units',true)});
+  },
+  recovery(){
+    mk('recTrend',{type:'bar',data:{labels:['Jan','Feb','Mar','Apr','May','Jun'],datasets:[{label:'Identified',data:[6.1,6.8,7.4,8.2,8.1,9.2],backgroundColor:'#c47f04',borderRadius:5,barThickness:16,stack:'a1'},{label:'Recovered',data:[1.8,2.4,2.9,3.1,3.4,3.8],backgroundColor:'#159a63',borderRadius:5,barThickness:16}]},options:{...baropt('₹ L'),plugins:{legend:{display:true,position:'bottom'}},scales:{x:NOG,y:AX}}});
+    mk('recPareto',{type:'bar',data:{labels:['Commission','Discount','Fwd Logistics','Return Log.','Tax'],datasets:[
+      {type:'bar',label:'Leakage',data:[3.1,2.4,1.1,0.8,0.6],backgroundColor:'#1E5EFF',borderRadius:5,barThickness:28,yAxisID:'y'},
+      {type:'line',label:'Cumulative %',data:[38.8,68.8,82.5,92.5,100],borderColor:'#cc3340',backgroundColor:'transparent',tension:.3,pointRadius:3,borderWidth:2,yAxisID:'y1'}]},
+      options:{interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,position:'bottom'}},scales:{x:NOG,y:{...AX,title:{display:false}},y1:{position:'right',min:0,max:100,grid:{display:false},border:{display:false},ticks:{callback:v=>v+'%'}}}}});
+  },
+};
+
+
+/* =====================================================================
+   SALES vs SETTLEMENT — live module (ReconOne backend -> PostgreSQL)
+   ===================================================================== */
+const API_BASE=(location.protocol==='file:')?'http://127.0.0.1:8000':'';
+const SVS={tab:'dashboard',run:null,status:'',exc:'',q:'',page:1,size:50,summary:null,setup:null,oi:{platform:'',show:'open'},dcPeriod:'',busy:false};
+const SVS_TABS=[['dashboard','Dashboard'],['results','Results'],['upload','Upload data'],['run','Run reconciliation'],['open','Open items']];
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const inr=v=>{if(v==null||v==='')return '–';const n=Number(v);return (n<0?'-':'')+'₹'+Math.abs(n).toLocaleString('en-IN',{maximumFractionDigits:2})};
+const inrS=v=>{if(v==null)return '–';const a=Math.abs(v),s=v<0?'-':'';return a>=1e7?s+'₹'+(a/1e7).toFixed(2)+' Cr':a>=1e5?s+'₹'+(a/1e5).toFixed(2)+' L':s+'₹'+a.toLocaleString('en-IN',{maximumFractionDigits:0})};
+const num=v=>v==null?'–':Number(v).toLocaleString('en-IN');
+const wrapL=(t,w=22)=>{const out=[];let cur='';String(t).split(' ').forEach(x=>{if((cur+' '+x).trim().length>w){out.push(cur.trim());cur=x}else cur+=' '+x});if(cur.trim())out.push(cur.trim());return out};
+const monthL=d=>{if(!d)return '';const s=String(d).slice(0,7);const [y,m]=s.split('-');return new Date(+y,+m-1,1).toLocaleDateString('en-IN',{month:'short',year:'numeric'})};
+const dateL=d=>d?new Date(String(d).length<=10?d+'T00:00:00':d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'–';
+const dtL=d=>d?new Date(d).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'–';
+const nextMonth=v=>{const [y,m]=v.split('-').map(Number);const d=new Date(y,m,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
+
+async function api(path,opt){
+  let r;try{r=await fetch(API_BASE+path,opt)}catch(e){throw new Error('Cannot reach the ReconOne backend. Start it with "python server.py" and open http://127.0.0.1:8000')}
+  let j=null;try{j=await r.json()}catch(e){}
+  if(!r.ok){const e=new Error((j&&j.error)||(r.status+' '+r.statusText));e.data=j;throw e}
+  return j;
+}
+const dl=p=>API_BASE+p;
+
+/* ---------- shell ---------- */
+PAGES.svs=()=>`
+  <div class="page svs">
+    <div class="svs-tabs" role="tablist">${SVS_TABS.map(([id,l])=>`<button class="svs-tab ${SVS.tab===id?'on':''}" data-tab="${id}" role="tab">${l}</button>`).join('')}
+      <span class="svs-db" id="svsDb" title="Database"></span></div>
+    <div id="svsTab"></div>
+  </div>`;
+CHARTS.svs=()=>{
+  document.querySelectorAll('.svs-tab').forEach(b=>b.onclick=()=>svsTab(b.dataset.tab));
+  api('/api/health').then(h=>{const e=document.getElementById('svsDb');if(e)e.innerHTML=`<span class="dot ok"></span>${esc(h.database)}`}).catch(()=>{const e=document.getElementById('svsDb');if(e)e.innerHTML='<span class="dot bad"></span>backend offline'});
+  svsTab(SVS.tab,true);
+};
+function svsTab(id,first){
+  SVS.tab=id;try{history.replaceState(null,'','#svs/'+id)}catch(e){}
+  document.querySelectorAll('.svs-tab').forEach(b=>b.classList.toggle('on',b.dataset.tab===id));
+  charts.forEach(c=>{try{c.destroy()}catch(e){}});charts=[];
+  const el=document.getElementById('svsTab');if(!el)return;
+  el.innerHTML='<div class="svs-empty">Loading…</div>';
+  ({dashboard:svsDashboard,results:svsDashboard,upload:svsUpload,run:svsRunTab,open:svsOpenItems,history:svsHistory}[id])(el);
+  if(!first)window.scrollTo(0,0);
+}
+function svsError(el,e){el.innerHTML=`<div class="panel"><div class="pb svs-empty bad">${esc(e.message)}</div></div>`}
+function svsUpdateChrome(run){
+  const pill=document.querySelector('.topbar .pill');if(pill&&run)pill.textContent='📅 '+run.period;
+  const foot=document.querySelector('.sidebar-foot');
+  if(foot&&run)foot.innerHTML=`<div class="run"><span class="dot"></span> Last run · ${esc(dtL(run.created_at))}</div><div>Period: ${esc(run.period)}${run.platform?' · '+esc(run.platform):''}</div>`;
+}
+
+/* ---------- DASHBOARD ---------- */
+async function svsDashboard(el){
+  let runs;try{runs=await api('/api/runs')}catch(e){return svsError(el,e)}
+  const done=runs.filter(r=>r.status==='DONE');
+  if(!done.length){el.innerHTML=`<div class="panel"><div class="pb svs-empty"><b>No reconciliation yet.</b><br>1. <a href="#" data-go="upload">Upload</a> the five files for each data month &nbsp;→&nbsp; 2. <a href="#" data-go="run">Run the reconciliation</a> &nbsp;→&nbsp; 3. Review it here.</div></div>`;el.querySelectorAll('[data-go]').forEach(a=>a.onclick=e=>{e.preventDefault();svsTab(a.dataset.go)});return}
+  if(!SVS.run||!done.some(r=>r.run_id===SVS.run))SVS.run=done[0].run_id;
+  svsUpdateChrome(done[0]);
+  el.innerHTML=`
+    <div class="panel svs-bar"><div class="pb svs-row">
+      <label class="svs-f">Run <select id="svsRun">${done.map(r=>`<option value="${r.run_id}" ${r.run_id===SVS.run?'selected':''}>#${r.run_id} · ${esc(r.period)} · ${esc(r.platform||'All platforms')}</option>`).join('')}</select></label>
+      <div style="flex:1"></div>
+      <a class="btn pri" id="svsXl" href="#">Download Excel</a>
+    </div></div>
+    <div id="svsBody"><div class="svs-empty">Loading…</div></div>`;
+  el.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>svsTab(b.dataset.go));
+  const sel=document.getElementById('svsRun');
+  sel.onchange=()=>{SVS.run=+sel.value;SVS.kv=null;SVS.status='';SVS.exc='';SVS.q='';SVS.page=1;svsRender()};
+  if(SVS.tab==='results')SVS.kv=null;
+  svsRender();
+}
+
+const SVS_NOT_MATCHED='_NOT_MATCHED',SVS_ANY_EXC='_ANY_EXCEPTION';
+// what each dashboard KPI card shows (in a panel right under the cards) when clicked
+const SVS_KPI={
+  total:{status:'',exc:'',title:'All keys'},
+  netsales:{status:'',exc:'',title:'All keys — net sales'},
+  netsettle:{status:'',exc:'',title:'All keys — net settlement'},
+  matchrate:{status:'MATCHED',exc:'',title:'Matched keys'},
+  netdiff:{status:SVS_NOT_MATCHED,exc:'',title:'Keys behind the net difference'},
+  unrec:{status:SVS_NOT_MATCHED,exc:'',title:'Unreconciled keys'},
+  exceptions:{status:'',exc:SVS_ANY_EXC,title:'Keys with exceptions'},
+  open:{open:true,title:'Open items'}
+};
+function svsKpi(id,cls,lab,val,sub){
+  return kpi(cls,lab,val,sub).replace('<div class="kcard ',`<div data-svs-kpi="${id}" role="button" tabindex="0" aria-expanded="false" title="Click to see these keys" class="kcard clickable `);
+}
+// horizontal status filter: All · Not matched · each status (with counts)
+function svsChips(s,cur,attr){
+  const notM=s.statuses.filter(x=>x.code!=='MATCHED').reduce((a,x)=>a+x.n,0);
+  const items=[['','All',s.kpi.total_keys,''],[SVS_NOT_MATCHED,'Not matched',notM,'']].concat(s.statuses.map(x=>[x.code,x.label,x.n,x.color]));
+  return `<div class="svs-chips" role="tablist">${items.map(([c,l,n,col])=>`<button class="chip ${cur===c?'on':''}" ${attr}="${esc(c)}" role="tab" aria-selected="${cur===c}">${col?`<span class="svs-dot" style="background:${col}"></span>`:''}${esc(l)} <b>${num(n)}</b></button>`).join('')}</div>`;
+}
+function svsKpiSync(){
+  document.querySelectorAll('[data-svs-kpi]').forEach(c=>{const on=!!(SVS.kv&&SVS.kv.id===c.dataset.svsKpi);c.classList.toggle('on',on);c.setAttribute('aria-expanded',on)});
+  const ch=document.getElementById('svsStatusChips');
+  if(ch&&SVS.summary){ch.innerHTML=svsChips(SVS.summary,SVS.status,'data-svs-chip');ch.querySelectorAll('[data-svs-chip]').forEach(b=>b.onclick=()=>{SVS.status=b.dataset.svsChip;SVS.page=1;svsRows()})}
+  const xs=document.getElementById('svsExcSel');if(xs)xs.value=SVS.exc||'';
+  const ss=document.getElementById('svsStSel');if(ss)ss.value=SVS.status||'';
+  const sw=document.getElementById('svsStWrap'),ew=document.getElementById('svsExWrap');
+  if(sw)sw.classList.toggle('on',!!SVS.status);if(ew)ew.classList.toggle('on',!!SVS.exc);
+  const cl=document.getElementById('svsClr');if(cl)cl.disabled=!(SVS.status||SVS.exc||SVS.q);
+}
+// fee checks: commission / logistics above the allowed % of MRP, actual settlement short / excess paid
+const SVS_FEE_TILES={
+  COMMISSION_ABOVE_ALLOWED:['bad',r=>'Commission above '+(r.commission_pct!=null?r.commission_pct+'% of net sales':'allowed %'),'excess commission'],
+  LOGISTICS_ABOVE_ALLOWED:['warn',r=>'Logistics above '+(r.logistics_pct!=null?r.logistics_pct+'% of MRP':'allowed %'),'excess logistics (fwd + rev)'],
+  CLAIM_RECOVERABLE:['purp',()=>'Recoverable from marketplace','to claim back'],
+  SETTLEMENT_SHORT_PAID:['bad',()=>'Settlement short paid','short vs re-calculated settlement'],
+  SETTLEMENT_EXCESS_PAID:['tealc',()=>'Settlement excess paid','excess vs re-calculated settlement']
+};
+function svsFeesHTML(s){
+  const fees=s.fees||[];if(!fees.length)return '';
+  const tiles=fees.filter(f=>SVS_FEE_TILES[f.code]).map(f=>{
+    const [cls,lab,what]=SVS_FEE_TILES[f.code],title=lab(s.run);
+    if(f.status==='NOT RUN')return kpi('info',esc(title),'Not run',esc(f.note||'Check skipped'));
+    SVS_KPI['fee_'+f.code]={fee:f.code,title:title};
+    return svsKpi('fee_'+f.code,f.n?cls:'good',esc(title),num(f.keys)+' orders',inrS(f.amount)+' '+what+' · '+num(f.n)+' rows');
+  }).join('');
+  return `${sec('Fee checks','Settlement files')}
+    <div class="kpis c4">${tiles}</div>`;
+}
+function svsBodyHTML(s){return SVS.tab==='results'?svsResultsHTML(s):svsCardsHTML(s)}
+function svsCardsHTML(s){
+  const k=s.kpi;
+  return `
+    ${sec('KPI Cards','Sales vs settlement — '+esc(s.run.period)+' · '+esc(s.run.platform||'All platforms'))}
+    <div class="kpis c4">
+      ${svsKpi('total','info','Total keys',num(k.total_keys),num(k.compared)+' found on both sides')}
+      ${svsKpi('matchrate',k.match_rate>=95?'good':k.match_rate>=85?'warn':'bad','Match rate',k.match_rate+'%',num(k.matched)+' of '+num(k.compared)+' matched')}
+      ${svsKpi('netsales','info','Net sales',inrS(k.net_sales),'Forward − RT / RTO')}
+      ${svsKpi('netsettle','info','Net settlement',inrS(k.net_settlement),'Forward − reverse')}
+    </div>
+    <div class="kpis c4" style="margin-top:14px">
+      ${svsKpi('netdiff',Math.abs(k.difference)<0.01?'good':'bad','Net difference',inrS(k.difference),'Net sales − net settlement')}
+      ${svsKpi('unrec','warn','Unreconciled amount',inrS(k.mismatched_amount),'|difference| of non-matched keys')}
+      ${svsKpi('exceptions','bad','Exceptions',num(k.exceptions),num(k.hygiene)+' hygiene findings')}
+      ${svsKpi('open','warn','Open items',num(k.open_items),(k.carried_in!=null?num(k.carried_in)+' carried in · '+num(k.closed_prior)+' closed · ':'')+num(k.awaiting)+' awaiting (T+'+k.lag_days+')')}
+    </div>
+    ${svsFeesHTML(s)}
+    <div id="svsKv"></div>
+    ${svsChartsHTML()}`;
+}
+function svsChartsHTML(){
+  return `${sec('Charts','Keys by status · match rate')}
+    <div class="grid g2">
+      ${chartPanel('svsStatus','Keys by status','click a bar to filter')}
+      ${chartPanel('svsTrend','Match rate by run','%')}
+    </div>`;
+}
+function svsResultsHTML(s){
+  const notM=s.statuses.filter(x=>x.code!=='MATCHED').reduce((a,x)=>a+x.n,0);
+  const grp=(cat,label)=>{const xs=s.exceptions.filter(e=>e.category===cat);
+    return xs.length?`<optgroup label="${label}">${xs.map(e=>`<option value="${esc(e.code)}">${esc(e.label)} (${num(e.n)})</option>`).join('')}</optgroup>`:''};
+  return `
+    ${sec('Results','Sales vs settlement — '+esc(s.run.period)+' · '+esc(s.run.platform||'All platforms'))}
+    <div class="panel">
+      <div class="svs-rbar">
+        <label class="svs-fsel st" id="svsStWrap"><span>Status</span><select id="svsStSel"><option value="">All (${num(s.kpi.total_keys)})</option><option value="${SVS_NOT_MATCHED}">Not matched (${num(notM)})</option>${s.statuses.map(x=>`<option value="${esc(x.code)}">${esc(x.label)} (${num(x.n)})</option>`).join('')}</select></label>
+        <label class="svs-fsel ex" id="svsExWrap"><span>Exception</span><select id="svsExcSel"><option value="">All</option><option value="${SVS_ANY_EXC}">Any exception</option>${grp('RECONCILIATION','Reconciliation')}${grp('HYGIENE','Data hygiene')}</select></label>
+        <label class="svs-fsel sr"><span>Search</span><input id="svsQ" type="search" placeholder="Packet / order ID"></label>
+        <button type="button" class="btn sm" id="svsClr">Clear</button>
+        <div style="flex:1"></div><span class="svs-count" id="svsCount"></span>
+        <a class="btn sm pri" id="svsXlR" href="#">Export</a>
+      </div>
+      <div class="tbl-wrap"><table><thead><tr>
+        ${SVS_HEAD}
+      </tr></thead><tbody id="svsRows"></tbody></table></div>
+      <div class="svs-pager" id="svsPager"></div>
+    </div>`;
+}
+
+async function svsRender(){
+  const body=document.getElementById('svsBody');if(!body)return;
+  body.innerHTML='<div class="svs-empty">Loading…</div>';
+  charts.forEach(c=>{try{c.destroy()}catch(e){}});charts=[];
+  let s,trend;
+  try{[s,trend]=await Promise.all([api('/api/summary/'+SVS.run),api('/api/status-trend')])}catch(e){return svsError(body,e)}
+  SVS.summary=s;
+  document.getElementById('svsXl').href=dl('/api/download/'+SVS.run);
+  body.innerHTML=svsBodyHTML(s);
+  if(window.Chart){
+    mk('svsStatus',{type:'bar',data:{labels:s.statuses.map(x=>wrapL(x.label)),datasets:[{data:s.statuses.map(x=>x.n),backgroundColor:s.statuses.map(x=>x.color),borderRadius:5,barThickness:18}]},
+      options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:c=>s.statuses[c[0].dataIndex].label}}},scales:{x:{...AX,ticks:{precision:0}},y:{...NOG,ticks:{autoSkip:false,font:{size:11}}}},onClick:(e,el)=>{if(el.length)svsFilter('status',s.statuses[el[0].index].code)}}});
+    mk('svsTrend',{type:'line',data:{labels:trend.map(t=>t.label),datasets:[{label:'Match rate',data:trend.map(t=>t.match_rate),borderColor:'#1E5EFF',backgroundColor:'rgba(30,94,255,.08)',fill:true,tension:.35,pointRadius:3,borderWidth:2}]},options:lineopt(0,100,'%')});
+  }
+  if(SVS.tab!=='results'){
+    body.querySelectorAll('[data-svs-kpi]').forEach(c=>{
+      const go=()=>svsKvToggle(c.dataset.svsKpi);
+      c.onclick=go;c.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}};
+    });
+    if(SVS.kv)svsKv();
+    return;
+  }
+  document.getElementById('svsExcSel').onchange=e=>{SVS.exc=e.target.value;SVS.page=1;svsRows()};
+  document.getElementById('svsStSel').onchange=e=>{SVS.status=e.target.value;SVS.page=1;svsRows()};
+  document.getElementById('svsClr').onclick=()=>{SVS.status='';SVS.exc='';SVS.q='';SVS.page=1;document.getElementById('svsQ').value='';svsRows()};
+  const q=document.getElementById('svsQ');
+  q.value=SVS.q;
+  q.oninput=()=>{clearTimeout(window.__svsq);window.__svsq=setTimeout(()=>{SVS.q=q.value.trim();SVS.page=1;svsRows()},300)};
+  svsRows();
+}
+function svsFilter(kind,code){
+  if(kind==='status'){SVS.status=code;SVS.exc=''}else{SVS.exc=code}
+  SVS.page=1;
+  if(SVS.tab!=='results'){SVS.kv=null;SVS.q='';svsTab('results');return}
+  svsRows();
+  document.getElementById('svsRows').closest('.panel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+const SVS_HEAD=`<th>Packet ID</th><th>Order release ID</th><th>Status</th><th>Exceptions</th><th class="r">Forward sales</th><th>Return</th><th class="r">Net sales</th>
+        <th class="r">Fwd settlement</th><th class="r">Reverse</th><th class="r">Net settlement</th><th class="r">Difference</th>`;
+function svsRowHTML(r,i,attr){return `<tr class="clickable" ${attr}="${i}">
+    <td class="mono">${esc(r.packet_id||'–')}</td><td class="mono">${esc(r.order_release_id||'–')}</td>
+    <td><span class="tag" style="background:${r.status_color}1a;color:${r.status_color}">${esc(r.status_label)}</span>${r.carried?' <small class="svs-meta">carried</small>':''}</td>
+    <td class="svs-xc" title="${esc(r.exceptions.join(' · '))}">${r.exceptions.length?r.exceptions.slice(0,2).map(x=>`<span class="svs-xt">${esc(x)}</span>`).join('')+(r.exceptions.length>2?`<span class="svs-xt more">+${r.exceptions.length-2} more</span>`:''):'<span class="svs-meta">–</span>'}</td>
+    <td class="r">${inr(r.forward_sales)}</td><td>${r.return_source&&r.return_source!=='NONE'?esc(r.return_source)+' '+inr(r.return_amount):'–'}</td><td class="r">${inr(r.net_sales)}</td>
+    <td class="r">${inr(r.forward_settlement)}</td><td class="r">${inr(r.reverse_settlement)}</td><td class="r">${inr(r.net_settlement)}</td>
+    <td class="r ${r.difference<0?'neg':''}">${inr(r.difference)}</td></tr>`}
+const svsPager=(page,pages)=>pages>1?`<button class="btn sm" ${page<=1?'disabled':''} data-p="${page-1}">‹ Prev</button><span>Page ${page} of ${num(pages)}</span><button class="btn sm" ${page>=pages?'disabled':''} data-p="${page+1}">Next ›</button>`:'';
+
+/* ---------- KPI card -> results panel right under the cards (no navigation) ---------- */
+function svsKvToggle(id){
+  const el=document.getElementById('svsKv');
+  if(SVS.kv&&SVS.kv.id===id){SVS.kv=null;if(el)el.innerHTML='';svsKpiSync();return}
+  const f=SVS_KPI[id];SVS.kv={id,status:f.status||'',exc:f.exc||'',q:'',page:1,bucket:'',scroll:true};
+  if(el)el.innerHTML='';
+  svsKv();
+}
+// bring the results panel of a clicked card into view (once per click) and flash it
+function svsKvScroll(){
+  const kv=SVS.kv,el=document.getElementById('svsKv');if(!kv||!kv.scroll||!el)return;
+  kv.scroll=false;
+  const p=el.querySelector('.svs-kvp');if(!p)return;
+  p.scrollIntoView({behavior:'smooth',block:'start'});
+  p.classList.remove('flash');void p.offsetWidth;p.classList.add('flash');
+}
+// columns of the fee drill-down: [value 1, value 2, difference]
+const SVS_FEE_COLS={
+  COMMISSION_ABOVE_ALLOWED:['Commission charged','Allowed commission','Excess commission'],
+  LOGISTICS_ABOVE_ALLOWED:['Logistics charged (fwd + rev)','Allowed logistics','Excess logistics'],
+  CLAIM_RECOVERABLE:['Fair settlement','Actual settlement','Claim amount'],
+  SETTLEMENT_SHORT_PAID:['Expected settlement','Actual settlement','Short paid'],
+  SETTLEMENT_EXCESS_PAID:['Expected settlement','Actual settlement','Excess paid']
+};
+async function svsKvFee(el){
+  const kv=SVS.kv,f=SVS_KPI[kv.id],cols=SVS_FEE_COLS[f.fee]||['Value in file','Expected','Difference'];
+  if(!el.querySelector('#svsKfRows')){
+    el.innerHTML=`<div class="panel svs-kvp"><div class="ph"><h4>${esc(f.title)}</h4><span class="hint" id="svsKfN"></span>
+        <button class="btn sm x" id="svsKvX" title="Close">✕ Close</button></div>
+      <div class="pb svs-kfsum" id="svsKfSum"></div>
+      <div class="bulkbar svs-fbar"><div class="svs-frow"><input id="svsKfQ" type="search" placeholder="Search order release / packet ID"><div style="flex:1"></div>
+        <a class="btn sm" href="${dl('/api/download/'+SVS.run)}" title="Full workbook — see the 'Fee Checks' sheet">Export (Fee Checks sheet)</a></div></div>
+      <div class="tbl-wrap"><table><thead><tr><th>Order release ID</th><th>Packet ID</th><th>File</th><th class="r">Row</th>
+        <th class="r">${esc(cols[0])}</th><th class="r">${esc(cols[1])}</th><th class="r">${esc(cols[2])}</th><th>How it was worked out</th></tr></thead>
+        <tbody id="svsKfRows"></tbody></table></div>
+      <div class="svs-pager" id="svsKfPg"></div></div>`;
+    document.getElementById('svsKvX').onclick=()=>svsKvToggle(kv.id);
+    const q=document.getElementById('svsKfQ');
+    q.oninput=()=>{clearTimeout(window.__svskf);window.__svskf=setTimeout(()=>{if(SVS.kv!==kv)return;kv.q=q.value.trim();kv.page=1;svsKv()},300)};
+  }
+  svsKvScroll();
+  const tb=document.getElementById('svsKfRows');
+  tb.innerHTML='<tr><td colspan="8" class="svs-empty">Loading…</td></tr>';
+  const p=new URLSearchParams({code:f.fee,page:kv.page,size:25});if(kv.q)p.set('q',kv.q);
+  let d;try{d=await api(`/api/fee-rows/${SVS.run}?`+p)}catch(e){tb.innerHTML=`<tr><td colspan="8" class="svs-empty bad">${esc(e.message)}</td></tr>`;return}
+  if(SVS.kv!==kv)return;
+  document.getElementById('svsKfN').textContent=num(d.total)+' rows · '+num(d.keys)+' orders';
+  document.getElementById('svsKfSum').innerHTML=`<div class="svs-kfbig"><b>${inrS(d.amount)}</b><span>${esc(cols[2].toLowerCase())} in total</span></div><p class="svs-meta">${esc(d.description)}</p>`;
+  tb.innerHTML=d.rows.length?d.rows.map(r=>`<tr><td class="mono">${esc(r.order_release_id||'–')}</td><td class="mono">${esc(r.packet_id||'–')}</td>
+      <td>${esc((r.dataset_label||'').replace(' (platform)',''))}</td><td class="r">${r.row_no!=null?num(r.row_no):'–'}</td>
+      <td class="r">${r.amount_1!=null?inr(r.amount_1):'–'}</td><td class="r">${r.amount_2!=null?inr(r.amount_2):'–'}</td>
+      <td class="r ${r.difference>0?'neg':''}"><b>${r.difference!=null?inr(r.difference):'–'}</b></td><td class="svs-x">${esc(r.description||'')}</td></tr>`).join('')
+    :'<tr><td colspan="8" class="svs-empty">No rows for this search</td></tr>';
+  const pg=document.getElementById('svsKfPg');
+  pg.innerHTML=svsPager(d.page,d.pages);
+  pg.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{kv.page=+b.dataset.p;svsKv()});
+}
+async function svsKv(){
+  const el=document.getElementById('svsKv');if(!el||!SVS.kv)return;
+  svsKpiSync();
+  const kv=SVS.kv,f=SVS_KPI[kv.id],s=SVS.summary;
+  if(f.open)return svsKvOpen(el);
+  if(f.fee)return svsKvFee(el);
+  if(!el.firstChild){
+    el.innerHTML=`<div class="panel svs-kvp"><div class="ph"><h4 id="svsKvT"></h4><span class="hint" id="svsKvN"></span>
+        <button class="btn sm x" id="svsKvX" title="Close">✕ Close</button></div>
+      <div class="bulkbar svs-fbar"><div id="svsKvChips"></div>
+        <div class="svs-frow"><input id="svsKvQ" type="search" placeholder="Search packet / order release ID"><span id="svsKvExc"></span><div style="flex:1"></div>
+        <a class="btn sm" id="svsKvXl" href="#">Export</a></div></div>
+      <div class="tbl-wrap"><table><thead><tr>${SVS_HEAD}</tr></thead><tbody id="svsKvRows"></tbody></table></div>
+      <div class="svs-pager" id="svsKvPg"></div></div>`;
+    document.getElementById('svsKvX').onclick=()=>svsKvToggle(kv.id);
+    const q=document.getElementById('svsKvQ');
+    q.oninput=()=>{clearTimeout(window.__svskq);window.__svskq=setTimeout(()=>{if(!SVS.kv)return;SVS.kv.q=q.value.trim();SVS.kv.page=1;svsKv()},300)};
+  }
+  document.getElementById('svsKvT').textContent=f.title;
+  svsKvScroll();
+  const ch=document.getElementById('svsKvChips');
+  ch.innerHTML=svsChips(s,kv.status,'data-kv-chip');
+  ch.querySelectorAll('[data-kv-chip]').forEach(b=>b.onclick=()=>{kv.status=b.dataset.kvChip;kv.page=1;svsKv()});
+  const ex=document.getElementById('svsKvExc');
+  const excL=kv.exc===SVS_ANY_EXC?'Any exception':((s.exceptions.find(x=>x.code===kv.exc))||{label:kv.exc}).label;
+  ex.innerHTML=kv.exc?`<button class="chip on" id="svsKvExcClr" title="Clear exception filter">${esc(excL)} ✕</button>`:'';
+  if(kv.exc)document.getElementById('svsKvExcClr').onclick=()=>{kv.exc='';kv.page=1;svsKv()};
+  const p=new URLSearchParams({page:kv.page,size:25}),xp=new URLSearchParams();
+  [['status',kv.status],['exc',kv.exc],['q',kv.q]].forEach(([k,v])=>{if(v){p.set(k,v);xp.set(k,v)}});
+  document.getElementById('svsKvXl').href=dl(`/api/download/${SVS.run}/results`+(xp.toString()?'?'+xp:''));
+  const tb=document.getElementById('svsKvRows');
+  tb.innerHTML='<tr><td colspan="11" class="svs-empty">Loading…</td></tr>';
+  let d;try{d=await api(`/api/results/${SVS.run}?`+p)}catch(e){tb.innerHTML=`<tr><td colspan="11" class="svs-empty bad">${esc(e.message)}</td></tr>`;return}
+  if(SVS.kv!==kv)return;
+  window.__svsKvRows=d.rows;
+  document.getElementById('svsKvN').textContent=num(d.total)+' keys';
+  tb.innerHTML=d.rows.length?d.rows.map((r,i)=>svsRowHTML(r,i,'data-kv-row')).join(''):'<tr><td colspan="11" class="svs-empty">No keys for this filter</td></tr>';
+  tb.querySelectorAll('[data-kv-row]').forEach(t=>t.onclick=()=>svsOpen(window.__svsKvRows[+t.dataset.kvRow]));
+  const pg=document.getElementById('svsKvPg');
+  pg.innerHTML=svsPager(d.page,d.pages);
+  pg.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{kv.page=+b.dataset.p;svsKv()});
+}
+async function svsKvOpen(el){
+  const kv=SVS.kv,plat=(SVS.summary.run.platform||'');
+  if(!kv.data){
+    el.innerHTML='<div class="panel svs-kvp"><div class="pb svs-empty">Loading…</div></div>';
+    try{kv.data=await api('/api/open-items?'+new URLSearchParams({platform:plat,show:'open'}))}catch(e){el.innerHTML=`<div class="panel svs-kvp"><div class="pb svs-empty bad">${esc(e.message)}</div></div>`;return}
+    if(SVS.kv!==kv)return;
+  }
+  const d=kv.data,bk=kv.bucket;
+  setTimeout(svsKvScroll,0);
+  const rows=d.rows.filter(r=>!bk||(bk==='await'?r.awaiting_settlement:(!r.awaiting_settlement&&r.age_bucket===bk)));
+  const size=25,pages=Math.max(Math.ceil(rows.length/size),1);kv.page=Math.min(kv.page,pages);
+  const pr=rows.slice((kv.page-1)*size,kv.page*size);
+  const chips=[['','All',d.rows.length]].concat(d.buckets.map(b=>[b.bucket.startsWith('Awaiting')?'await':b.bucket,b.bucket,b.n]));
+  el.innerHTML=`<div class="panel svs-kvp"><div class="ph"><h4>Open items</h4><span class="hint">${num(rows.length)} keys · ${esc(plat||'All platforms')}</span>
+      <button class="btn sm x" id="svsKvX" title="Close">✕ Close</button></div>
+    <div class="bulkbar svs-fbar"><div class="svs-frow"><div class="svs-chips">${chips.map(([c,l,n])=>`<button class="chip ${bk===c?'on':''}" data-kv-b="${esc(c)}">${esc(l)} <b>${num(n)}</b></button>`).join('')}</div>
+      <div style="flex:1"></div><a class="btn sm" href="${dl('/api/open-items/download?'+new URLSearchParams({platform:plat,show:'open'}))}">Export</a></div></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Key</th><th>Status</th><th>Open since</th><th>Sale date</th><th class="r">Age</th><th class="r">Net sales</th><th class="r">Net settlement</th><th class="r">Difference</th></tr></thead><tbody>
+      ${pr.length?pr.map(r=>`<tr><td class="mono">${esc(r.item_key)}</td><td><span class="tag" style="background:${r.status_color}1a;color:${r.status_color}">${esc(r.status_label)}</span>${r.awaiting_settlement?' <span class="tag t-closed">awaiting T+'+d.lag_days+'</span>':''}</td>
+        <td>${esc(monthL(r.first_month))}</td><td>${esc(r.sale_date?dateL(r.sale_date):'–')}</td><td class="r">${num(r.age_days)} d</td><td class="r">${inr(r.net_sales)}</td><td class="r">${inr(r.net_settlement)}</td><td class="r ${r.difference<0?'neg':''}">${inr(r.difference)}</td></tr>`).join('')
+        :'<tr><td colspan="8" class="svs-empty">No open items</td></tr>'}
+    </tbody></table></div>
+    <div class="svs-pager">${svsPager(kv.page,pages)}</div></div>`;
+  document.getElementById('svsKvX').onclick=()=>svsKvToggle(kv.id);
+  el.querySelectorAll('[data-kv-b]').forEach(b=>b.onclick=()=>{kv.bucket=b.dataset.kvB;kv.page=1;svsKvOpen(el)});
+  el.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{kv.page=+b.dataset.p;svsKvOpen(el)});
+}
+
+async function svsRows(){
+  const tb=document.getElementById('svsRows');if(!tb)return;
+  const p=new URLSearchParams({page:SVS.page,size:SVS.size});
+  if(SVS.status)p.set('status',SVS.status);if(SVS.exc)p.set('exc',SVS.exc);if(SVS.q)p.set('q',SVS.q);
+  svsKpiSync();
+  const xp=new URLSearchParams();if(SVS.status)xp.set('status',SVS.status);if(SVS.exc)xp.set('exc',SVS.exc);if(SVS.q)xp.set('q',SVS.q);
+  document.getElementById('svsXlR').href=dl(`/api/download/${SVS.run}/results`+(xp.toString()?'?'+xp:''));
+  tb.innerHTML='<tr><td colspan="11" class="svs-empty">Loading…</td></tr>';
+  let d;try{d=await api(`/api/results/${SVS.run}?`+p)}catch(e){tb.innerHTML=`<tr><td colspan="11" class="svs-empty bad">${esc(e.message)}</td></tr>`;return}
+  window.__svsRows=d.rows;
+  document.getElementById('svsCount').textContent=num(d.total)+' keys';
+  tb.innerHTML=d.rows.length?d.rows.map((r,i)=>svsRowHTML(r,i,'data-svs-row')).join(''):'<tr><td colspan="11" class="svs-empty">No keys for this filter</td></tr>';
+  tb.querySelectorAll('[data-svs-row]').forEach(t=>t.onclick=()=>svsOpen(window.__svsRows[+t.dataset.svsRow]));
+  const pg=document.getElementById('svsPager');
+  pg.innerHTML=d.pages>1?`<button class="btn sm" ${d.page<=1?'disabled':''} data-p="${d.page-1}">‹ Prev</button><span>Page ${d.page} of ${num(d.pages)}</span><button class="btn sm" ${d.page>=d.pages?'disabled':''} data-p="${d.page+1}">Next ›</button>`:'';
+  pg.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{SVS.page=+b.dataset.p;svsRows()});
+}
+const DS_LABEL={sales_forward:'Sales – Forward',sales_rt:'Sales – RT',sales_rto:'Sales – RTO',settlement_forward:'Settlement – Forward',settlement_reverse:'Settlement – Reverse'};
+function svsOpen(r){
+  const row=(l,v)=>`<div class="svs-kv"><span>${l}</span><b>${v}</b></div>`;
+  const src=Object.entries(r.source_rows||{});
+  const body=`
+    <div class="svs-calc">
+      ${row('Forward sales',inr(r.forward_sales))}
+      ${row('− '+(r.return_source&&r.return_source!=='NONE'?r.return_source:'Return'),inr(r.return_amount))}
+      ${row('= Net sales',inr(r.net_sales))}<hr>
+      ${row('Forward settlement',inr(r.forward_settlement))}
+      ${row('− Reverse settlement',inr(r.reverse_settlement))}
+      ${row('= Net settlement',inr(r.net_settlement))}<hr>
+      ${row('Difference (net sales − net settlement)',inr(r.difference))}
+    </div>
+    <h5>Exceptions</h5><div class="svs-dv">${r.exceptions.length?r.exceptions.map(x=>`<span class="tag t-open" style="margin:0 6px 6px 0">${esc(x)}</span>`).join(''):'None'}</div>
+    <h5>Hygiene flags</h5><div class="svs-dv">${r.hygiene_flags.length?r.hygiene_flags.map(x=>`<span class="tag t-review" style="margin:0 6px 6px 0">${esc(x)}</span>`).join(''):'None'}</div>
+    ${r.first_month?`<h5>Open since</h5><div class="svs-dv">${esc(monthL(r.first_month))}${r.carried?' (carried from an earlier month)':''}</div>`:''}
+    <h5>Source rows in the uploaded files</h5>
+    <div class="svs-dv">${src.length?src.map(([d,rows])=>`<div class="svs-src"><span>${esc(DS_LABEL[d]||d)}</span>${rows.map(n=>`<button class="chip sm" data-src="${d}" data-n="${n}">row ${n}</button>`).join('')}</div>`).join(''):'None'}</div>
+    <div id="svsSrcView"></div>`;
+  showDrawer(r.status_label,r.packet_id||r.order_release_id,body,[]);
+  document.getElementById('drActions').innerHTML=`<button class="btn" id="svsCopy">Copy ID</button>`;
+  document.getElementById('svsCopy').onclick=()=>{try{navigator.clipboard.writeText(r.key)}catch(e){}toast('Copied '+r.key)};
+  document.querySelectorAll('#drBody [data-src]').forEach(b=>b.onclick=async()=>{
+    const v=document.getElementById('svsSrcView');v.innerHTML='<div class="svs-meta">Loading…</div>';
+    try{const d=await api(`/api/row/${b.dataset.src}/${b.dataset.n}`);const x=d.rows.find(z=>String(z._row_no)===b.dataset.n)||d.rows[0];
+      v.innerHTML=`<div class="svs-calc" style="margin-top:10px"><div class="svs-meta" style="margin-bottom:6px">${esc(d.label)} · row ${esc(b.dataset.n)} · ${esc(x._source_file||'')}</div>${Object.entries(x).filter(([k])=>!k.startsWith('_')).map(([k,v])=>row(esc(k),esc(v))).join('')}</div>`}
+    catch(e){v.innerHTML=`<div class="svs-meta bad">${esc(e.message)}</div>`}
+  });
+}
+
+/* ---------- UPLOAD ---------- */
+async function svsUpload(el){
+  let d;try{d=await api('/api/data')}catch(e){return svsError(el,e)}
+  const periods=d.periods;
+  el.innerHTML=`
+    ${sec('Upload','Load each month\'s five files with their data month')}
+    <div class="svs-up1">
+      ${panel('Upload a file','.xlsx · .xls · .csv',`
+        <form id="svsUp" class="svs-form">
+          <label>Dataset<select name="dataset" required>${d.datasets.map(x=>`<option value="${x.name}">${esc(x.label)}</option>`).join('')}</select></label>
+          <label>Data month<input type="month" name="period" value="${esc(periods[0]||d.default_period)}" required><small>The month this file belongs to.</small></label>
+          <label>If this month is already loaded<select name="mode"><option value="replace">Replace this month's rows</option><option value="append">Append (a second file of the same month)</option></select></label>
+          <label>Sheet <span class="svs-meta">optional</span><input name="sheet" placeholder="Sheet name or number (default: first sheet)"></label>
+          <label class="svs-file"><input type="file" name="file" accept=".xlsx,.xlsm,.xls,.csv,.txt" required><span id="svsFileName">Choose or drop a file</span></label>
+          <button class="btn pri" type="submit" id="svsUpBtn">Upload</button>
+        </form>
+        <div id="svsUpMsg"></div>`)}
+    </div>
+    ${sec('Loaded','Rows per data month')}
+    ${periods.length?`<div class="panel"><div class="tbl-wrap"><table><thead><tr><th>Dataset</th>${periods.map(p=>`<th class="r">${esc(p==='(no month)'?p:monthL(p))}</th>`).join('')}<th class="r">Total</th><th></th></tr></thead><tbody>
+      ${d.datasets.map(x=>`<tr><td><b>${esc(x.label)}</b></td>${periods.map(p=>{const n=x.periods[p];const pr=(d.profiles[p]||{})[x.name];const fl=pr&&pr.flags.length?`<span class="svs-flag ${pr.flags.some(f=>f.level==='bad')?'bad':''}" title="${esc(pr.flags.map(f=>f.message).join('\n'))}">!</span>`:'';
+        return `<td class="r">${n?num(n)+fl+` <button class="svs-x-btn" title="Clear ${esc(x.label)} ${esc(p)}" data-clear="${x.name}" data-period="${esc(p)}">×</button>`:'<span class="svs-meta">–</span>'}</td>`}).join('')}
+        <td class="r"><b>${num(x.rows)}</b></td><td class="r">${x.rows?`<button class="btn sm" data-clear="${x.name}" data-period="">Clear all</button>`:''}</td></tr>`).join('')}
+    </tbody></table></div></div>`:`<div class="panel"><div class="pb svs-empty">Nothing loaded yet.</div></div>`}`;
+  el.querySelectorAll('[data-go]').forEach(a=>a.onclick=e=>{e.preventDefault();svsTab(a.dataset.go)});
+  const f=document.getElementById('svsUp'),fi=f.querySelector('input[type=file]');
+  fi.onchange=()=>{document.getElementById('svsFileName').textContent=fi.files[0]?fi.files[0].name:'Choose or drop a file';
+    const n=(fi.files[0]&&fi.files[0].name.toLowerCase())||'';const guess=[['reverse','settlement_reverse'],['settle','settlement_forward'],['rto','sales_rto'],['rt','sales_rt'],['sale','sales_forward']].find(([k])=>n.includes(k));
+    if(guess&&!f.dataset.touched)f.dataset.value=guess[1],f.elements.dataset.value=guess[1]};
+  f.elements.dataset.onchange=()=>f.dataset.touched='1';
+  f.onsubmit=async e=>{
+    e.preventDefault();const btn=document.getElementById('svsUpBtn'),msg=document.getElementById('svsUpMsg');
+    btn.disabled=true;btn.textContent='Uploading…';msg.innerHTML='<div class="svs-note">Reading and loading the file — large files can take a minute.</div>';
+    try{
+      const r=await api('/api/upload',{method:'POST',body:new FormData(f)});
+      const pr=r.profile;
+      msg.innerHTML=`<div class="svs-note ok"><b>${esc(r.label)} · ${esc(monthL(r.period))}:</b> loaded ${num(r.rows_loaded)} rows from ${esc(r.file)} (${r.mode==='replace'?'replaced that month':'appended'}).
+        ${r.added_columns&&r.added_columns.length?`<br>Added ${r.added_columns.length} new column(s): ${esc(r.added_columns.slice(0,12).join(', '))}${r.added_columns.length>12?' …':''}`:''}
+        ${r.missing_columns&&r.missing_columns.length?`<br>${r.missing_columns.length} standard column(s) not in the file: ${esc(r.missing_columns.slice(0,12).join(', '))}${r.missing_columns.length>12?' …':''}`:''}
+        ${r.cleaning&&Object.keys(r.cleaning).length?`<br>Cleaning: ${esc(Object.entries(r.cleaning).map(([k,v])=>k+': '+num(v)).join('; '))}`:''}
+        ${pr?`<br>Data check: ${num(pr.rows)} rows, ${pr.min_date?'dates '+esc(dateL(pr.min_date))+' to '+esc(dateL(pr.max_date)):'no readable dates'}${pr.flags.length?'':' — OK'}`:''}</div>
+        ${pr&&pr.flags.length?pr.flags.map(x=>`<div class="svs-note ${x.level==='bad'?'bad':'warn'}">Warning: ${esc(x.message)}</div>`).join(''):''}`;
+      toast('Uploaded '+r.label+' · '+monthL(r.period));
+      const keep=msg.innerHTML;await svsUpload(el);document.getElementById('svsUpMsg').innerHTML=keep;
+    }catch(err){msg.innerHTML=`<div class="svs-note bad">${esc(err.message)}</div>`;btn.disabled=false;btn.textContent='Upload'}
+  };
+  el.querySelectorAll('[data-clear]').forEach(b=>b.onclick=async()=>{
+    if(b.dataset.armed!=='1'){b.dataset.armed='1';const t=b.textContent;b.textContent=b.dataset.period?'Clear?':'Confirm clear all';b.classList.add('warn');setTimeout(()=>{b.dataset.armed='';b.textContent=t;b.classList.remove('warn')},3000);return}
+    try{await api(`/api/data/${b.dataset.clear}?period=${encodeURIComponent(b.dataset.period)}`,{method:'DELETE'});toast('Cleared');svsUpload(el)}catch(e){toast(e.message)}
+  });
+}
+
+/* ---------- RUN ---------- */
+// one column dropdown: field name (+ help) on the left, the file's column on the right
+function svsMapSel(d,f,label){
+  return `<label class="svs-mrow" data-row-ds="${d.name}" data-row-role="${f.role}">
+    <span class="svs-mlab">${esc(label||f.label)}${f.required?' <b class="req" title="Required">*</b>':''}</span>
+    <select data-ds="${d.name}" data-role="${f.role}" ${f.required?'data-req="1"':''}><option value="">${f.required?'— choose a column —':'— not used —'}</option>${d.columns.map(c=>`<option value="${esc(c.value)}" ${c.value===f.selected?'selected':''}>${esc(c.header)}</option>`).join('')}</select></label>`;
+}
+const SVS_STEP=(n,title)=>`<div class="svs-step"><span class="svs-stepn">${n}</span><div><h3>${title}</h3></div></div>`;
+// what each fee-check card does, in plain words
+const SVS_FEE_INFO={
+  commission:'Flags commission above your allowed % of net sales, and re-does the file’s commission, TCS and TDS maths.',
+  logistics:'Flags forward + reverse logistics above your allowed % of MRP, and checks the fees and GST add up.',
+  settlement:'Re-calculates what the marketplace should have paid, compares it with what it paid, and works out the claim.',
+  payment:'Checks prepaid + postpaid payments add up to the settlement and that every payment has a bank UTR.'
+};
+function svsNum(name,label,val,help,opt={}){
+  return `<label class="svs-in"><span>${label}</span><div class="svs-inw">${opt.pre?`<i>${opt.pre}</i>`:''}<input type="number" name="${name}" value="${esc(val)}" step="${opt.step||'0.01'}" ${opt.min!=null?`min="${opt.min}"`:''} ${opt.max!=null?`max="${opt.max}"`:''} ${opt.ph?`placeholder="${esc(opt.ph)}"`:''}>${opt.suf?`<i>${opt.suf}</i>`:''}</div></label>`;
+}
+// step 3: one card per check group — its limits / rates up front, the columns it reads folded away
+function svsFeeSetup(st){
+  const df=st.defaults,ds=st.sides.flatMap(s=>s.datasets).filter(d=>d.name.startsWith('settlement'));
+  const pct={min:0,max:100,suf:'%'};
+  const filters={
+    commission:svsNum('commission_pct','Allowed commission',df.commission_pct,'Of net sales (customer paid). Blank = no limit check.',{...pct,ph:'e.g. 8.26'})
+      +svsNum('tcs_rate','TCS rate',df.tcs_rate,'Of taxable amount',pct)+svsNum('tds_rate','TDS rate',df.tds_rate,'Of taxable amount',pct),
+    logistics:svsNum('logistics_pct','Allowed logistics',df.logistics_pct,'Of MRP, forward + reverse. Blank = no limit check.',pct)
+      +svsNum('logistics_gst_rate','GST on logistics',df.logistics_gst_rate,'Of the logistics fees',pct)+svsNum('pg_rate','Payment gateway fee',df.pg_rate,'Of customer paid',pct),
+    settlement:svsNum('commission_tol','Allowed difference',df.commission_tol,'Smaller gaps are ignored (rounding). Also used for tax and fee checks.',{pre:'₹',min:0}),
+    payment:''
+  };
+  const fileName={settlement_forward:'Forward settlement file',settlement_reverse:'Reverse settlement file'};
+  const cards=(st.fee_groups||[]).map(g=>{
+    const per=ds.filter(d=>d.rows).map(d=>[d,d.fields.filter(f=>f.group===g.code)]).filter(([,fs])=>fs.length);
+    const n=per.reduce((a,[,fs])=>a+fs.length,0);
+    const cols=per.length?per.map(([d,fs])=>`<div class="svs-mfile">${esc(fileName[d.name])}</div>${fs.map(f=>svsMapSel(d,f)).join('')}`).join('')
+      :'<div class="svs-meta">No settlement file uploaded.</div>';
+    return `<div class="panel svs-chk" data-grp="${g.code}">
+      <div class="svs-chk-h"><h4>${esc(g.label)}</h4><span class="svs-badge" data-badge="${g.code}"></span></div>
+      ${filters[g.code]?`<div class="svs-ins">${filters[g.code]}</div>`:''}
+      <details class="svs-cols"><summary>Columns <span class="svs-meta" data-cnt="${g.code}">(${n})</span></summary><div class="svs-mgrid">${cols}</div></details>
+    </div>`;
+  }).join('');
+  return `${SVS_STEP(2,'Fee &amp; settlement checks')}
+    <div class="svs-chks">${cards}</div>`;
+}
+// step 4: one folding block per file; opens by itself when a required column is missing
+function svsMapSetup(st){
+  return `${SVS_STEP(3,'File columns')}
+    <div class="svs-files">${st.sides.flatMap(s=>s.datasets).map(d=>{
+      const fs=d.fields.filter(f=>!f.group);
+      return `<details class="panel svs-fileblk" data-file="${d.name}">
+        <summary><span class="svs-fname">${esc(d.label)}</span><span class="svs-meta">${d.rows?num(d.rows)+' rows':'not uploaded'}</span><span class="svs-badge" data-fbadge="${d.name}"></span></summary>
+        <div class="svs-mgrid">${d.rows?fs.map(f=>svsMapSel(d,f)).join(''):'<div class="svs-meta">Not uploaded.</div>'}</div>
+      </details>`}).join('')}</div>`;
+}
+// badges + the summary bar, recomputed on every change
+function svsRunRefresh(){
+  const f=document.getElementById('svsRunF');if(!f)return;
+  const sel=(q)=>[...f.querySelectorAll(q)];
+  const val=n=>(f.elements[n]&&f.elements[n].value||'').trim();
+  let reqMissing=0;
+  document.querySelectorAll('[data-file]').forEach(b=>{
+    const ss=sel(`.svs-fileblk[data-file="${b.dataset.file}"] select[data-ds]`),miss=ss.filter(s=>s.dataset.req&&!s.value),unused=ss.filter(s=>!s.dataset.req&&!s.value);
+    reqMissing+=miss.length;
+    const bd=b.querySelector('[data-fbadge]');
+    bd.className='svs-badge '+(!ss.length?'off':miss.length?'bad':unused.length?'warn':'ok');
+    bd.textContent=!ss.length?'No data':miss.length?miss.length+' required missing':unused.length?ss.length-unused.length+' of '+ss.length+' matched':'All matched';
+    if(miss.length)b.open=true;
+  });
+  let groupsOn=0;
+  (SVS.setup.fee_groups||[]).forEach(g=>{
+    const ss=sel(`.svs-chk[data-grp="${g.code}"] select[data-ds]`),used=ss.filter(s=>s.value).length;
+    const limit=g.code==='commission'?val('commission_pct'):g.code==='logistics'?val('logistics_pct'):null;
+    const bd=document.querySelector(`[data-badge="${g.code}"]`);
+    const cnt=document.querySelector(`[data-cnt="${g.code}"]`);if(cnt)cnt.textContent=`(${used} of ${ss.length} found)`;
+    let cls='ok',t='Ready';
+    if(!ss.length){cls='off';t='No data'}
+    else if(!used){cls='off';t='Skipped'}
+    else{groupsOn++;
+      if(limit===''){cls='warn';t='No limit'}
+      else if(limit!=null){t='Limit '+limit+'%'}
+      if(used<ss.length&&cls==='ok'){cls='warn';t+=' · '+(ss.length-used)+' not used'}}
+    bd.className='svs-badge '+cls;bd.textContent=t;
+  });
+  const m=val('month'),mt=val('month_to'),pl=val('platform');
+  const bar=document.getElementById('svsRunSum');
+  if(bar)bar.innerHTML=[
+    `<b>${m?esc(monthL(m))+(mt&&mt!==m?' – '+esc(monthL(mt)):''):'No month chosen'}</b>`,
+    esc(pl||'All platforms'),
+    `${groupsOn} of ${(SVS.setup.fee_groups||[]).length} checks on`,
+    reqMissing?`<span class="bad">${reqMissing} required column${reqMissing>1?'s':''} missing</span>`:'<span class="ok">Ready</span>'
+  ].join('<span class="svs-sep">·</span>');
+}
+async function svsRunTab(el){
+  let st;try{st=await api('/api/run/setup')}catch(e){return svsError(el,e)}
+  SVS.setup=st;const df=st.defaults;
+  const hasData=st.sides.some(s=>s.datasets.some(d=>d.rows>0));
+  el.innerHTML=`
+    ${!hasData?`<div class="svs-note warn">No data uploaded.</div>`:''}
+    <form id="svsRunF" class="svs-runf">
+    ${SVS_STEP(1,'Filters')}
+    <div class="panel"><div class="pb svs-ins svs-ins-wide">
+      <label class="svs-in"><span>From month</span><input type="month" name="month" id="svsMf" value="${esc(df.month)}" required></label>
+      <label class="svs-in"><span>To month</span><input type="month" name="month_to" id="svsMt" value=""></label>
+      <label class="svs-in"><span>Platform</span><select name="platform" id="svsPlat"><option value="">All platforms</option>${st.platforms.map(p=>`<option>${esc(p)}</option>`).join('')}</select></label>
+      ${svsNum('tolerance','Amount tolerance',df.tolerance,'',{pre:'₹',step:'0.001',min:0})}
+      ${svsNum('return_window','Return window',df.return_window,'',{suf:'days',step:'1',min:0})}
+    </div></div>
+    ${svsFeeSetup(st)}
+    ${svsMapSetup(st)}
+    <div class="svs-runbar"><div class="svs-runsum"><div id="svsRunSum"></div><div id="svsRunMsg"></div></div><button class="btn pri lg" type="submit" id="svsRunBtn">Run reconciliation</button></div>
+    </form>`;
+  el.querySelectorAll('[data-go]').forEach(a=>a.onclick=e=>{e.preventDefault();svsTab(a.dataset.go)});
+  const mf=document.getElementById('svsMf'),mt=document.getElementById('svsMt');
+  const sync=()=>{if(!mf.value)return;mt.min=mf.value;mt.max=nextMonth(mf.value);if(mt.value&&(mt.value<mt.min||mt.value>mt.max))mt.value=''};
+  mf.onchange=()=>{sync();svsRunRefresh()};sync();
+  const platSel=el.querySelector('select[data-ds=settlement_forward][data-role=platform]');
+  if(platSel)platSel.addEventListener('change',async()=>{const ps=document.getElementById('svsPlat');const cur=ps.value;
+    const vals=platSel.value?await api(`/api/values/settlement_forward?column=${encodeURIComponent(platSel.value)}`).catch(()=>[]):[];
+    ps.innerHTML='<option value="">All platforms</option>'+vals.map(p=>`<option ${p===cur?'selected':''}>${esc(p)}</option>`).join('');svsRunRefresh()});
+  const form=document.getElementById('svsRunF');
+  form.addEventListener('input',svsRunRefresh);form.addEventListener('change',svsRunRefresh);
+  svsRunRefresh();
+  form.onsubmit=async e=>{
+    e.preventDefault();const f=e.target,msg=document.getElementById('svsRunMsg'),btn=document.getElementById('svsRunBtn');
+    const missing=[...f.querySelectorAll('select[data-req]')].filter(s=>!s.value);
+    if(missing.length){
+      msg.innerHTML=`<div class="svs-note bad">Choose a column for: ${missing.map(s=>esc(DS_LABEL[s.dataset.ds]+' → '+s.closest('label').querySelector('.svs-mlab').firstChild.textContent.trim())).join(', ')}</div>`;
+      const blk=missing[0].closest('details');if(blk)blk.open=true;missing[0].scrollIntoView({behavior:'smooth',block:'center'});missing[0].focus({preventScroll:true});return}
+    const mapping={};f.querySelectorAll('select[data-ds]').forEach(s=>{(mapping[s.dataset.ds]=mapping[s.dataset.ds]||{})[s.dataset.role]=s.value});
+    const body={month:f.month.value,month_to:f.month_to.value,tolerance:f.tolerance.value,return_window:f.return_window.value,commission_tol:f.commission_tol.value,commission_pct:f.commission_pct.value,logistics_pct:f.logistics_pct.value,logistics_gst_rate:f.logistics_gst_rate.value,tcs_rate:f.tcs_rate.value,tds_rate:f.tds_rate.value,pg_rate:f.pg_rate.value,platform:f.platform.value,mapping};
+    btn.disabled=true;btn.textContent='Running…';msg.innerHTML=`<div class="svs-note"><span class="svs-spin"></span> Running…</div>`;
+    try{const r=await api('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      toast('Run #'+r.run_id+' completed — results on the Dashboard');SVS.run=r.run_id;SVS.status='';SVS.exc='';SVS.q='';SVS.page=1;svsTab('dashboard')}
+    catch(err){const list=err.data&&err.data.errors;msg.innerHTML=`<div class="svs-note bad">${esc(err.message)}${list?'<ul>'+list.map(x=>`<li>${esc(x)}</li>`).join('')+'</ul>':''}</div>`;btn.disabled=false;btn.textContent='Run reconciliation'}
+  };
+}
+
+/* ---------- OPEN ITEMS ---------- */
+async function svsOpenItems(el){
+  const p=new URLSearchParams({platform:SVS.oi.platform,show:SVS.oi.show});
+  let d;try{d=await api('/api/open-items?'+p)}catch(e){return svsError(el,e)}
+  const tot=d.buckets.reduce((a,b)=>a+b.n,0),amt=d.buckets.reduce((a,b)=>a+b.diff,0);
+  el.innerHTML=`
+    ${sec('Carry-forward','Keys not matched in a run stay open and are re-checked in every following run until they match')}
+    <div class="panel svs-bar"><div class="pb svs-row">
+      <label class="svs-f">Show <select id="oiShow"><option value="open">Still open</option><option value="closed">Closed by a later run</option></select></label>
+      <label class="svs-f">Platform <select id="oiPlat">${d.platforms.map(x=>`<option value="${esc(x)}">${esc(x||'All platforms')}</option>`).join('')||'<option value="">All platforms</option>'}</select></label>
+      <div style="flex:1"></div><span class="selinfo">${num(d.total)} items</span>
+      <a class="btn pri" href="${dl('/api/open-items/download?'+p)}">Download Excel</a>
+    </div></div>
+    ${SVS.oi.show==='open'?`<div class="kpis c4">${kpi('warn','Open items',num(tot),inrS(amt)+' open difference')}${d.buckets.slice(0,3).map(b=>kpi(b.bucket.startsWith('Awaiting')?'good':b.bucket==='90+ days'?'bad':'info',esc(b.bucket),num(b.n),inrS(b.diff))).join('')}</div>`:''}
+    <div class="panel" style="margin-top:14px"><div class="tbl-wrap"><table><thead><tr><th>Key</th><th>Status</th><th>Open since</th><th>Sale date</th><th class="r">Age</th><th class="r">Net sales</th><th class="r">Net settlement</th><th class="r">Difference</th><th>Last checked</th>${SVS.oi.show==='closed'?'<th>Closed in</th>':''}</tr></thead><tbody>
+      ${d.rows.length?d.rows.map(r=>`<tr><td class="mono">${esc(r.item_key)}</td><td><span class="tag" style="background:${r.status_color}1a;color:${r.status_color}">${esc(r.status_label)}</span>${r.awaiting_settlement?' <span class="tag t-closed">awaiting T+'+d.lag_days+'</span>':''}</td>
+        <td>${esc(monthL(r.first_month))}</td><td>${esc(r.sale_date?dateL(r.sale_date):'–')}</td><td class="r">${num(r.age_days)} d</td><td class="r">${inr(r.net_sales)}</td><td class="r">${inr(r.net_settlement)}</td><td class="r ${r.difference<0?'neg':''}">${inr(r.difference)}</td>
+        <td>${esc(monthL(r.last_month))} <span class="svs-meta">#${esc(r.last_run_id)}</span></td>${SVS.oi.show==='closed'?`<td>${esc(monthL(r.closed_month))} <span class="svs-meta">#${esc(r.closed_run_id)}</span></td>`:''}</tr>`).join('')
+        :`<tr><td colspan="10" class="svs-empty">No ${SVS.oi.show} items</td></tr>`}
+    </tbody></table></div>${d.total>d.rows.length?`<div class="svs-pager">Showing ${num(d.rows.length)} of ${num(d.total)} — download Excel for all</div>`:''}</div>`;
+  const s=document.getElementById('oiShow'),pl=document.getElementById('oiPlat');s.value=SVS.oi.show;pl.value=SVS.oi.platform;
+  s.onchange=()=>{SVS.oi.show=s.value;svsOpenItems(el)};pl.onchange=()=>{SVS.oi.platform=pl.value;svsOpenItems(el)};
+}
+
+/* ---------- DATA CHECK ---------- */
+async function svsDataCheck(el){
+  let d;try{d=await api('/api/data-check'+(SVS.dcPeriod?'?period='+encodeURIComponent(SVS.dcPeriod):''))}catch(e){return svsError(el,e)}
+  if(!d.periods.length){el.innerHTML='<div class="panel"><div class="pb svs-empty">Nothing uploaded with a data month yet.</div></div>';return}
+  SVS.dcPeriod=d.period;
+  const [m0,m1]=d.month;
+  el.innerHTML=`
+    ${sec('Data check','Dates and amounts of every file per data month — catch a wrong or partial upload before running')}
+    <div class="panel svs-bar"><div class="pb svs-row">
+      <label class="svs-f">Data month <select id="dcP">${d.periods.map(p=>`<option value="${esc(p)}" ${p===d.period?'selected':''}>${esc(monthL(p))}</option>`).join('')}</select></label>
+      <div style="flex:1"></div><button class="btn" id="dcRef">Recompute with current mapping</button>
+    </div></div>
+    ${d.cross_checks.length?d.cross_checks.map(c=>`<div class="svs-note">${esc(c)}</div>`).join(''):''}
+    <div class="panel"><div class="tbl-wrap"><table><thead><tr><th>File</th><th class="r">Rows</th><th>Date column</th><th>First date</th><th>Last date</th><th class="r">Before</th><th class="r">In month</th><th class="r">After</th><th class="r">Total amount</th><th>Check</th></tr></thead><tbody>
+      ${d.datasets.map(x=>{const p=x.profile;return p?`<tr><td><b>${esc(x.label)}</b></td><td class="r">${num(p.rows)}</td><td class="mono">${esc(p.date_column||'–')}</td><td>${esc(dateL(p.min_date))}</td><td>${esc(dateL(p.max_date))}</td><td class="r">${num(p.before_month)}</td><td class="r">${num(p.in_month)}</td><td class="r">${num(p.after_month)}</td><td class="r">${inr(p.total_amount)}</td>
+        <td>${p.flags.length?p.flags.map(f=>`<div class="svs-flagline ${f.level}">${esc(f.message)}</div>`).join(''):'<span class="tag t-closed">OK</span>'}</td></tr>`:`<tr><td><b>${esc(x.label)}</b></td><td colspan="9" class="svs-meta">Not loaded for this month</td></tr>`}).join('')}
+    </tbody></table></div></div>
+    ${sec('Per day','Rows per day — red = a day of the month with no rows, grey = outside the data month')}
+    <div class="panel"><div class="pb svs-heat-wrap"><table class="svs-heat"><thead><tr><th></th>${d.days.map(day=>`<th title="${esc(day)}">${+day.slice(8)}</th>`).join('')}</tr></thead><tbody>
+      ${d.datasets.filter(x=>x.profile).map(x=>{const pd=x.profile.per_day||{};const mx=Math.max(1,...Object.values(pd));return `<tr><th>${esc(x.label)}</th>${d.days.map(day=>{const n=pd[day]||0,inm=day>=m0&&day<=m1;
+        const bg=!inm?(n?'#dfe3ea':'#f3f4f7'):n?`rgba(30,94,255,${(.15+.85*n/mx).toFixed(2)})`:'#fbe7e8';return `<td style="background:${bg}" title="${esc(day)}: ${n} rows"></td>`}).join('')}</tr>`}).join('')}
+    </tbody></table></div></div>`;
+  document.getElementById('dcP').onchange=e=>{SVS.dcPeriod=e.target.value;svsDataCheck(el)};
+  document.getElementById('dcRef').onclick=async e=>{e.target.disabled=true;e.target.textContent='Recomputing…';try{await api('/api/data-check/refresh',{method:'POST'});toast('Data check recomputed')}catch(x){toast(x.message)}svsDataCheck(el)};
+}
+
+/* ---------- HISTORY ---------- */
+async function svsHistory(el){
+  let runs;try{runs=await api('/api/runs')}catch(e){return svsError(el,e)}
+  el.innerHTML=`
+    ${sec('History','Every reconciliation run stored in the database')}
+    <div class="panel"><div class="tbl-wrap"><table><thead><tr><th>Run</th><th>When</th><th>Month(s)</th><th>Platform</th><th>Status</th><th class="r">Matched</th><th class="r">Unmatched</th><th class="r">Sales only</th><th class="r">Settlement only</th><th class="r">Exceptions</th><th></th></tr></thead><tbody>
+      ${runs.length?runs.map(r=>`<tr><td><b>#${r.run_id}</b></td><td>${esc(dtL(r.created_at))}</td><td>${esc(r.period)}</td><td>${esc(r.platform||'All')}</td>
+        <td>${r.status==='DONE'?'<span class="tag t-closed">Done</span>':r.status==='FAILED'?`<span class="tag t-open" title="${esc(r.message||'')}">Failed</span>`:`<span class="tag t-prog">${esc(r.status||'Running')}</span>`}</td>
+        <td class="r">${num(r.matched)}</td><td class="r">${num(r.unmatched)}</td><td class="r">${num(r.sales_only)}</td><td class="r">${num(r.settlement_only)}</td><td class="r">${num(r.exception_count)}</td>
+        <td class="r">${r.status==='DONE'?`<button class="btn sm" data-open="${r.run_id}">Open</button> <a class="btn sm" href="${dl('/api/download/'+r.run_id)}">Excel</a>`:r.message?`<span class="svs-meta svs-x" title="${esc(r.message)}">${esc(r.message.slice(0,80))}</span>`:''}</td></tr>`).join('')
+        :'<tr><td colspan="11" class="svs-empty">No runs yet</td></tr>'}
+    </tbody></table></div></div>`;
+  el.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{SVS.run=+b.dataset.open;SVS.kv=null;SVS.status='';SVS.exc='';SVS.q='';SVS.page=1;svsTab('results')});
+}
+
+/* ============ INIT ============ */
+document.getElementById('ham').onclick=()=>{document.getElementById('sidebar').classList.toggle('open')};
+{const _go=go;go=function(id){document.body.classList.toggle('svs-on',id==='svs');_go(id)}}
+{const h=location.hash.slice(1).split('/');if(h[1]==='datacheck')h[1]='results';if(h[0]==='svs'&&h[1]&&SVS_TABS.some(t=>t[0]===h[1]))SVS.tab=h[1];buildNav();go(h[0]==='svs'?'svs':'home');}
+</script>
+</body>
+</html>
